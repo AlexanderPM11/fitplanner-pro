@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../api/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Check, ArrowLeft, Save, Dumbbell, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Check, ArrowLeft, Save, Dumbbell, Loader2, Timer, X as CloseIcon, RotateCcw, Volume2 } from 'lucide-react';
 import type { Exercise } from '../types';
 import ExercisePicker from '../components/workout/ExercisePicker';
 import { Helmet } from 'react-helmet-async';
@@ -25,6 +25,12 @@ const WorkoutEditor = () => {
   const [saving, setSaving] = useState(false);
   const [isTemplate, setIsTemplate] = useState(false);
   const [expandedEx, setExpandedEx] = useState<number | null>(null);
+  
+  // Timer State
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const [timerDuration, setTimerDuration] = useState(60);
+  
   const [searchParams] = useSearchParams();
   const { showToast } = useNotification();
 
@@ -38,6 +44,35 @@ const WorkoutEditor = () => {
       loadWorkoutData(templateId, false);
     }
   }, [searchParams]);
+
+  // Timer Interval
+  useEffect(() => {
+    let interval: any;
+    if (isTimerActive && timeLeft !== null && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft(prev => (prev !== null && prev > 0) ? prev - 1 : 0);
+      }, 1000);
+    } else if (timeLeft === 0) {
+      setIsTimerActive(false);
+      playTimerEndSound();
+    }
+    return () => clearInterval(interval);
+  }, [isTimerActive, timeLeft]);
+
+  const playTimerEndSound = () => {
+    try {
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+      audio.volume = 0.5;
+      audio.play();
+      
+      // Haptic feedback if available
+      if (window.navigator.vibrate) {
+        window.navigator.vibrate([200, 100, 200]);
+      }
+    } catch (e) {
+      console.warn('Audio play failed', e);
+    }
+  };
 
   const loadWorkoutData = async (id: string, isEditing: boolean) => {
     const { data: workout, error: workoutError } = await supabase
@@ -63,10 +98,10 @@ const WorkoutEditor = () => {
     interface DBWorkoutExercise { order_index: number, exercise: Exercise, sets: DBSet[] }
 
     const loadedExercises: WorkoutExerciseState[] = workout.workout_exercises
-      .sort((a: DBWorkoutExercise, b: DBWorkoutExercise) => a.order_index - b.order_index)
-      .map((we: DBWorkoutExercise) => ({
-        exercise: we.exercise,
-        sets: we.sets.sort((a: DBSet, b: DBSet) => a.order_index - b.order_index).map((s: DBSet) => ({
+      .sort((a: any, b: any) => a.order_index - b.order_index)
+      .map((we: any) => ({
+        exercise: Array.isArray(we.exercise) ? we.exercise[0] : we.exercise,
+        sets: (we.sets || []).sort((a: DBSet, b: DBSet) => a.order_index - b.order_index).map((s: DBSet) => ({
           weight: s.weight ? s.weight.toString() : '',
           reps: s.reps ? s.reps.toString() : '',
           completed: s.completed
@@ -114,8 +149,29 @@ const WorkoutEditor = () => {
 
   const toggleSetComplete = (exerciseIndex: number, setIndex: number) => {
     const newExercises = [...exercises];
-    newExercises[exerciseIndex].sets[setIndex].completed = !newExercises[exerciseIndex].sets[setIndex].completed;
+    const isNowCompleted = !newExercises[exerciseIndex].sets[setIndex].completed;
+    newExercises[exerciseIndex].sets[setIndex].completed = isNowCompleted;
     setExercises(newExercises);
+
+    // Auto-trigger timer if completing a set
+    if (isNowCompleted && !isTemplate) {
+      startTimer();
+    }
+  };
+
+  const startTimer = (seconds = timerDuration) => {
+    setTimeLeft(seconds);
+    setIsTimerActive(true);
+  };
+
+  const stopTimer = () => {
+    setIsTimerActive(false);
+    setTimeLeft(null);
+  };
+
+  const adjustTimer = (seconds: number) => {
+    setTimeLeft(prev => (prev !== null ? Math.max(0, prev + seconds) : seconds));
+    if (!isTimerActive) setIsTimerActive(true);
   };
 
   const saveWorkout = async () => {
@@ -423,6 +479,61 @@ const WorkoutEditor = () => {
           onClose={() => setShowPicker(false)}
         />
       )}
+
+      {/* Floating Rest Timer Component */}
+      <AnimatePresence>
+        {timeLeft !== null && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-24 left-4 right-4 z-50 flex justify-center"
+          >
+            <div className="glass-card shadow-2xl border-primary/20 bg-black/80 backdrop-blur-2xl px-6 py-4 flex items-center space-x-6 min-w-[300px] justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-full border-2 border-white/5 flex items-center justify-center">
+                    <Timer className={isTimerActive ? "text-primary animate-pulse" : "text-white/20"} size={24} />
+                  </div>
+                  {/* Simple Progress Ring effect */}
+                  <svg className="absolute inset-0 w-12 h-12 -rotate-90">
+                    <circle 
+                      cx="24" cy="24" r="22" 
+                      fill="transparent" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      className="text-primary transition-all duration-1000"
+                      strokeDasharray={138}
+                      strokeDashoffset={138 - (138 * (timeLeft / timerDuration))}
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-white/30 leading-none mb-1">Descanso</p>
+                  <p className="text-2xl font-black italic tracking-tighter tabular-nums text-white">
+                    {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button 
+                  onClick={() => adjustTimer(30)}
+                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 text-[10px] font-bold"
+                >
+                  +30s
+                </button>
+                <button 
+                  onClick={stopTimer}
+                  className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 hover:bg-red-500/20"
+                >
+                  <CloseIcon size={18} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

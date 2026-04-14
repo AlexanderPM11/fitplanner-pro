@@ -1,15 +1,25 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
 import { motion } from 'framer-motion';
-import { Calendar, Dumbbell, Trash2, Edit2, Bookmark, Clock } from 'lucide-react';
+import { Calendar, Dumbbell, Trash2, Edit2, Bookmark, Clock, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { Workout } from '../types';
+import type { Workout, Exercise } from '../types';
 import { Helmet } from 'react-helmet-async';
 import { useNotification } from '../context/NotificationContext';
 
+interface HistoryWorkout extends Workout {
+
+  is_template: boolean;
+  workout_exercises?: {
+    exercise: {
+      image_url: string | null;
+    };
+  }[];
+}
+
 const History = () => {
   const navigate = useNavigate();
-  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [workouts, setWorkouts] = useState<HistoryWorkout[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'sessions' | 'routines'>('sessions');
   const { showToast, confirm } = useNotification();
@@ -21,7 +31,12 @@ const History = () => {
       if (user) {
         const { data } = await supabase
           .from('workouts')
-          .select('*')
+          .select(`
+            *,
+            workout_exercises (
+              exercise:exercises ( image_url )
+            )
+          `)
           .eq('user_id', user.id)
           .order('started_at', { ascending: false });
         if (data) setWorkouts(data);
@@ -107,8 +122,30 @@ const History = () => {
               className="glass-card p-4 flex items-center justify-between group cursor-pointer hover:border-primary/50 transition-all"
             >
               <div className="flex items-center min-w-0 flex-1">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mr-4 transition-colors ${workout.is_template ? 'bg-primary/10 text-primary' : 'bg-white/5 text-white/40'}`}>
-                  {workout.is_template ? <Bookmark size={20} /> : <Calendar size={20} />}
+                <div className="flex -space-x-3 mr-4">
+                  {workout.workout_exercises?.slice(0, 3).map((we: any, idx: number) => {
+                    const exercise = Array.isArray(we.exercise) ? we.exercise[0] : we.exercise;
+                    return (
+                      <div key={idx} className="w-10 h-10 rounded-xl border-2 border-background bg-white/5 overflow-hidden shrink-0">
+                        {exercise?.image_url ? (
+                          exercise.image_url.includes('.mp4') || exercise.image_url.includes('.webm') ? (
+                            <video src={exercise.image_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                          ) : (
+                            <img src={exercise.image_url} alt="exercise" className="w-full h-full object-cover" />
+                          )
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white/5 bg-white/5 uppercase text-[8px] font-bold">
+                            <Activity size={12} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {(!workout.workout_exercises || workout.workout_exercises.length === 0) && (
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${workout.is_template ? 'bg-primary/10 text-primary' : 'bg-white/5 text-white/40'}`}>
+                      {workout.is_template ? <Bookmark size={18} /> : <Calendar size={18} />}
+                    </div>
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-bold italic uppercase tracking-tighter group-hover:text-primary transition-colors truncate">{workout.name}</h3>
