@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-background text-white antialiased selection:bg-primary/30;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-surface/50 border border-white/10 backdrop-blur-md rounded-2xl;
+  }
+  
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-hover text-black font-bold py-3 px-6 rounded-xl transition-all active:scale-95 shadow-[0_0_20px_rgba(0,242,255,0.3)];
+  }
+
+  .nav-item {
+    @apply flex flex-col items-center justify-center text-white/50 transition-colors py-2;
+  }
+
+  .nav-item.active {
+    @apply text-primary;
+  }
+}
+
+/* Custom scrollbar for a premium feel */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
