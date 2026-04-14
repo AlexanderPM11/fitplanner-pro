@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../api/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Check, ArrowLeft, Save } from 'lucide-react';
+import { Plus, Trash2, Check, ArrowLeft, Save, Dumbbell, Loader2 } from 'lucide-react';
 import type { Exercise } from '../types';
 import ExercisePicker from '../components/workout/ExercisePicker';
 import { Helmet } from 'react-helmet-async';
@@ -24,6 +24,7 @@ const WorkoutEditor = () => {
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isTemplate, setIsTemplate] = useState(false);
+  const [expandedEx, setExpandedEx] = useState<number | null>(null);
   const [searchParams] = useSearchParams();
   const { showToast } = useNotification();
 
@@ -261,29 +262,103 @@ const WorkoutEditor = () => {
               className="glass-card overflow-hidden"
             >
               <div className="flex flex-col">
-                <div className="p-4 bg-white/5 flex justify-between items-center">
+                <div 
+                  className="p-4 bg-white/5 flex justify-between items-center cursor-pointer hover:bg-white/10 transition-colors"
+                  onClick={() => setExpandedEx(expandedEx === exIdx ? null : exIdx)}
+                >
                   <div className="flex items-center space-x-3">
-                    {ex.exercise.image_url && (
-                      <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-white/5 border border-white/10 group/media cursor-pointer relative">
-                        {ex.exercise.image_url.includes('.mp4') ? (
+                    {ex.exercise.image_url ? (
+                      <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-white/5 border border-white/10 relative group/media">
+                        {ex.exercise.image_url.includes('.mp4') || ex.exercise.image_url.includes('.webm') ? (
                           <video src={ex.exercise.image_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
                         ) : (
-                          <img src={ex.exercise.image_url} alt={ex.exercise.name} className="w-full h-full object-cover" />
+                          <img src={ex.exercise.image_url} alt={ex.exercise.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                         )}
+                      </div>
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl shrink-0 bg-white/5 border border-white/10 flex items-center justify-center text-white/10">
+                        <Dumbbell size={20} />
                       </div>
                     )}
                     <div>
-                      <h3 className="font-black italic uppercase tracking-tight text-primary">{ex.exercise.name}</h3>
+                      <h3 className="font-black italic uppercase tracking-tight text-primary leading-tight">{ex.exercise.name}</h3>
                       <p className="text-[10px] text-white/30 uppercase font-bold">{ex.exercise.category}</p>
                     </div>
                   </div>
-                  <button onClick={() => removeExercise(exIdx)} className="text-white/20 hover:text-red-400">
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeExercise(exIdx);
+                      }} 
+                      className="p-2 text-white/20 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
-                
-                {/* Reference Media Expanded (Optional/Hover or just visible) */}
-                {/* Note: We keep it compact by default, but the thumbnail is there for reference */}
+
+                {/* Large Media Preview (Expanded) */}
+                <AnimatePresence>
+                  {expandedEx === exIdx && ex.exercise.image_url && (
+                    <motion.div
+                      key={`expanded-${exIdx}`}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                      className="overflow-hidden bg-black/60 border-y border-white/5"
+                    >
+                      <div className="aspect-video w-full relative flex items-center justify-center bg-black/20">
+                        {/* Loading State */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Loader2 size={24} className="text-primary/20 animate-spin" />
+                        </div>
+
+                        {/* Video detection: Check for .mp4, .webm or common video/gif patterns from ExerciseDB */}
+                        {(ex.exercise.image_url.includes('.mp4') || 
+                          ex.exercise.image_url.includes('.webm') || 
+                          ex.exercise.image_url.includes('video') ||
+                          ex.exercise.image_url.includes('giphy')) ? (
+                          <video 
+                            src={ex.exercise.image_url} 
+                            autoPlay 
+                            loop 
+                            muted 
+                            playsInline 
+                            controls
+                            className="relative z-10 w-full h-full object-contain"
+                            onError={(e) => {
+                              // If video fails, try rendering as image (fallback for GIFs that might be misidentified)
+                              const target = e.currentTarget;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                const img = document.createElement('img');
+                                img.src = ex.exercise.image_url!;
+                                img.className = 'w-full h-full object-contain relative z-10';
+                                parent.appendChild(img);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <img 
+                            src={ex.exercise.image_url} 
+                            alt={ex.exercise.name} 
+                            className="relative z-10 w-full h-full object-contain" 
+                          />
+                        )}
+                        
+                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent z-20">
+                          <p className="text-[10px] font-black italic uppercase tracking-widest text-primary flex items-center space-x-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                            <span>Guía de Movimiento</span>
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               <div className="p-4 space-y-2">

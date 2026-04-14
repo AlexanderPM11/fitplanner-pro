@@ -15,6 +15,7 @@ interface DashboardWorkoutSet {
 }
 
 interface DashboardWorkoutExercise {
+  exercise?: { image_url: string | null };
   sets: DashboardWorkoutSet[];
 }
 
@@ -88,6 +89,7 @@ const Dashboard = () => {
           name,
           started_at,
           workout_exercises (
+            exercise:exercises ( image_url ),
             sets ( weight, reps, completed )
           )
         `)
@@ -98,7 +100,15 @@ const Dashboard = () => {
         .limit(3);
 
       if (recentData) {
-        setRecentWorkouts(recentData);
+        // Flatten the exercise array returned by Supabase join
+        const formattedData = recentData.map((workout: any) => ({
+          ...workout,
+          workout_exercises: workout.workout_exercises.map((we: any) => ({
+            ...we,
+            exercise: Array.isArray(we.exercise) ? we.exercise[0] : we.exercise
+          }))
+        }));
+        setRecentWorkouts(formattedData as RecentWorkout[]);
       }
       
       setLoadingMetrics(false);
@@ -203,8 +213,22 @@ const Dashboard = () => {
               return (
                 <div key={workout.id} className="glass-card p-4 flex items-center justify-between group hover:border-primary/50 transition-colors">
                   <div className="flex items-center">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mr-4 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
-                      <Activity size={18} />
+                    <div className="flex -space-x-3 mr-4">
+                      {workout.workout_exercises?.slice(0, 3).map((we: DashboardWorkoutExercise, idx: number) => (
+                        <div key={idx} className="w-10 h-10 rounded-xl border-2 border-background bg-white/5 overflow-hidden shrink-0">
+                          {we.exercise?.image_url ? (
+                            we.exercise.image_url.includes('.mp4') || we.exercise.image_url.includes('.webm') ? (
+                              <video src={we.exercise.image_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={we.exercise.image_url} alt="exercise" className="w-full h-full object-cover" />
+                            )
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-white/5 bg-white/5 uppercase text-[8px] font-bold">
+                              <Activity size={14} />
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                     <div>
                       <h5 className="font-bold text-sm tracking-tight">{workout.name || 'Sesión sin nombre'}</h5>
