@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './api/supabase';
 import Layout from './components/layout/Layout';

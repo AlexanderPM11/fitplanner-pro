@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
 import { motion } from 'framer-motion';
 import { Calendar, ChevronRight, Dumbbell } from 'lucide-react';

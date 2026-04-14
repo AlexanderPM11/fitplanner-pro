@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
 import { LogOut, User as UserIcon, Shield, Settings, Bell, CircleCheck } from 'lucide-react';
 import type { Profile } from '../types';

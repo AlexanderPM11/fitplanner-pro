@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
 import { motion } from 'framer-motion';
 import { Plus, ChevronRight, Activity, Trophy, Dumbbell } from 'lucide-react';
@@ -7,7 +7,6 @@ import { Helmet } from 'react-helmet-async';
 
 const Dashboard = () => {
   const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function getProfile() {
@@ -20,7 +19,6 @@ const Dashboard = () => {
           .single();
         setProfile(data);
       }
-      setLoading(false);
     }
     getProfile();
   }, []);

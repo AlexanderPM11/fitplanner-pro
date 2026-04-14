@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../api/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,16 +44,6 @@ const WorkoutEditor = () => {
       completed: false
     });
     setExercises(newExercises);
-  };
-
-  const removeSet = (exerciseIndex: number, setIndex: number) => {
-    const newExercises = [...exercises];
-    newExercises[exerciseIndex].sets = newExercises[exerciseIndex].sets.filter((_, i) => i !== setIndex);
-    if (newExercises[exerciseIndex].sets.length === 0) {
-      removeExercise(exerciseIndex);
-    } else {
-      setExercises(newExercises);
-    }
   };
 
   const updateSet = (exerciseIndex: number, setIndex: number, field: keyof WorkoutExerciseState['sets'][0], value: string | boolean) => {
