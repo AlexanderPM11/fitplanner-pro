@@ -6,6 +6,7 @@ import Auth from './components/auth/Auth';
 import Dashboard from './pages/Dashboard';
 import WorkoutEditor from './pages/WorkoutEditor';
 import History from './pages/History';
+import ProfilePage from './pages/Profile';
 
 const App = () => {
   const [session, setSession] = useState<any>(null);
@@ -44,17 +45,7 @@ const App = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/workout" element={<WorkoutEditor />} />
         <Route path="/history" element={<History />} />
-        <Route path="/profile" element={
-          <div className="p-8 text-center space-y-4">
-            <h1 className="text-2xl font-bold">Settings</h1>
-            <button 
-              onClick={() => supabase.auth.signOut()}
-              className="px-6 py-2 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl hover:bg-red-500/20 transition-all"
-            >
-              Sign Out
-            </button>
-          </div>
-        } />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
