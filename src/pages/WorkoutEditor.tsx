@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../api/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Check, ArrowLeft, Save, Dumbbell, Loader2, Timer, X as CloseIcon, RotateCcw, Volume2 } from 'lucide-react';
+import { Plus, Trash2, Check, ArrowLeft, Save, Dumbbell, Loader2, Timer, X as CloseIcon, RotateCcw, Volume2, Maximize2 } from 'lucide-react';
 import type { Exercise } from '../types';
 import ExercisePicker from '../components/workout/ExercisePicker';
+import MediaModal from '../components/shared/MediaModal';
 import { Helmet } from 'react-helmet-async';
 import { useNotification } from '../context/NotificationContext';
 
@@ -30,6 +31,9 @@ const WorkoutEditor = () => {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [timerDuration, setTimerDuration] = useState(60);
+  
+  // Fullscreen Preview State
+  const [fsMedia, setFsMedia] = useState<{ url: string; title: string } | null>(null);
   
   const [searchParams] = useSearchParams();
   const { showToast } = useNotification();
@@ -365,10 +369,23 @@ const WorkoutEditor = () => {
                       transition={{ duration: 0.3, ease: 'easeOut' }}
                       className="overflow-hidden bg-black/60 border-y border-white/5"
                     >
-                      <div className="aspect-video w-full relative flex items-center justify-center bg-black/20">
+                      <div 
+                        className="aspect-video w-full relative flex items-center justify-center bg-black/20 cursor-expand hover:bg-black/30 transition-all group/expand"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFsMedia({ url: ex.exercise.image_url!, title: ex.exercise.name });
+                        }}
+                      >
                         {/* Loading State */}
                         <div className="absolute inset-0 flex items-center justify-center">
                           <Loader2 size={24} className="text-primary/20 animate-spin" />
+                        </div>
+                        
+                        <div className="absolute inset-0 z-20 opacity-0 group-hover/expand:opacity-100 transition-opacity flex items-center justify-center bg-black/40">
+                          <div className="flex flex-col items-center space-y-2">
+                            <Maximize2 size={24} className="text-primary" />
+                            <span className="text-[10px] font-black uppercase text-white">Pantalla Completa</span>
+                          </div>
                         </div>
 
                         {/* Video detection: Check for .mp4, .webm or common video/gif patterns from ExerciseDB */}
@@ -479,6 +496,14 @@ const WorkoutEditor = () => {
           onClose={() => setShowPicker(false)}
         />
       )}
+
+      {/* Fullscreen Media Modal */}
+      <MediaModal 
+        isOpen={!!fsMedia}
+        url={fsMedia?.url || ''}
+        title={fsMedia?.title || ''}
+        onClose={() => setFsMedia(null)}
+      />
 
       {/* Floating Rest Timer Component */}
       <AnimatePresence>
