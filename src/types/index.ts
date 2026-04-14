@@ -19,6 +19,23 @@ export interface Workout {
   description: string | null;
   started_at: string;
   completed_at: string | null;
+  is_template: boolean; // Assigned by DB default false
+}
+
+export interface Schedule {
+  id: string;
+  user_id: string;
+  workout_id: string;
+  day_of_week: number;
+  workout?: Workout;
+}
+
+export interface ScheduleCompletion {
+  id: string;
+  user_id: string;
+  schedule_id: string;
+  completed_at: string;
+  created_at: string;
 }
 
 export interface WorkoutExercise {

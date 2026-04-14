@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Dumbbell, History, User } from 'lucide-react';
+import { LayoutDashboard, Dumbbell, History, User, Calendar } from 'lucide-react';
 
 const Navbar = () => {
   return (
@@ -13,6 +13,11 @@ const Navbar = () => {
         <NavLink to="/workout" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Dumbbell size={24} />
           <span className="text-[10px] mt-1 font-medium">Workout</span>
+        </NavLink>
+
+        <NavLink to="/planner" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <Calendar size={24} />
+          <span className="text-[10px] mt-1 font-medium">Planner</span>
         </NavLink>
 
         <NavLink to="/history" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>

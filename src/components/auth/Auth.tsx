@@ -3,6 +3,7 @@ import { supabase } from '../../api/supabase';
 import { Dumbbell, Mail, Lock, User as UserIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
+import { useNotification } from '../../context/NotificationContext';
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
@@ -11,6 +12,7 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const { showToast } = useNotification();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +31,7 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        alert('Check your email for the confirmation link!');
+        showToast('Check your email for the confirmation link!', 'success');
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,

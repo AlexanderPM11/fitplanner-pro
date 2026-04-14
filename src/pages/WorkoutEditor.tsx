@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../api/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Check, ArrowLeft, Save } from 'lucide-react';
 import type { Exercise } from '../types';
 import ExercisePicker from '../components/workout/ExercisePicker';
 import { Helmet } from 'react-helmet-async';
+import { useNotification } from '../context/NotificationContext';
 
 interface WorkoutExerciseState {
   exercise: Exercise;
@@ -22,6 +23,54 @@ const WorkoutEditor = () => {
   const [exercises, setExercises] = useState<WorkoutExerciseState[]>([]);
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isTemplate, setIsTemplate] = useState(false);
+  const [searchParams] = useSearchParams();
+  const { showToast } = useNotification();
+
+  useEffect(() => {
+    const templateId = searchParams.get('templateId');
+    const editId = searchParams.get('editId');
+    
+    if (editId) {
+      loadWorkoutData(editId, true);
+    } else if (templateId) {
+      loadWorkoutData(templateId, false);
+    }
+  }, [searchParams]);
+
+  const loadWorkoutData = async (id: string, isEditing: boolean) => {
+    const { data: workout, error: workoutError } = await supabase
+      .from('workouts')
+      .select('*, workout_exercises(*, exercise:exercises(*), sets(*))')
+      .eq('id', id)
+      .single();
+
+    if (workoutError || !workout) {
+      console.error('Error loading workout data:', workoutError);
+      return;
+    }
+
+    setName(workout.name);
+    setIsTemplate(workout.is_template);
+    
+    // If we are loading a template to START a workout, or cloning, we are logging a session
+    if (!isEditing) {
+      setIsTemplate(false);
+    }
+
+    const loadedExercises: WorkoutExerciseState[] = workout.workout_exercises
+      .sort((a: any, b: any) => a.order_index - b.order_index)
+      .map((we: any) => ({
+        exercise: we.exercise,
+        sets: we.sets.sort((a: any, b: any) => a.order_index - b.order_index).map((s: any) => ({
+          weight: s.weight.toString(),
+          reps: s.reps.toString(),
+          completed: s.completed
+        }))
+      }));
+
+    setExercises(loadedExercises);
+  };
 
   const addExercise = (exercise: Exercise) => {
     setExercises([...exercises, {
@@ -71,26 +120,52 @@ const WorkoutEditor = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // 1. Create Workout
-      const { data: workout, error: workoutError } = await supabase
-        .from('workouts')
-        .insert({
-          user_id: user.id,
-          name,
-          started_at: new Date().toISOString(),
-          completed_at: new Date().toISOString() // Simulating instant completion for now
-        })
-        .select()
-        .single();
+      const editId = searchParams.get('editId');
+      let workoutId = editId;
 
-      if (workoutError) throw workoutError;
+      // 1. Create or Update Workout
+      if (editId) {
+        const { error: updateError } = await supabase
+          .from('workouts')
+          .update({
+            name,
+            is_template: isTemplate,
+            completed_at: isTemplate ? null : new Date().toISOString()
+          })
+          .eq('id', editId);
+        
+        if (updateError) throw updateError;
+
+        // Delete existing exercises/sets to re-insert updated ones (cleanest way to handle adds/removes)
+        const { error: deleteError } = await supabase
+          .from('workout_exercises')
+          .delete()
+          .eq('workout_id', editId);
+        
+        if (deleteError) throw deleteError;
+      } else {
+        const { data: newWorkout, error: workoutError } = await supabase
+          .from('workouts')
+          .insert({
+            user_id: user.id,
+            name,
+            started_at: new Date().toISOString(),
+            completed_at: isTemplate ? null : new Date().toISOString(),
+            is_template: isTemplate
+          })
+          .select()
+          .single();
+
+        if (workoutError) throw workoutError;
+        workoutId = newWorkout.id;
+      }
 
       // 2. Create Workout Exercises and Sets
       for (let i = 0; i < exercises.length; i++) {
         const { data: we, error: weError } = await supabase
           .from('workout_exercises')
           .insert({
-            workout_id: workout.id,
+            workout_id: workoutId,
             exercise_id: exercises[i].exercise.id,
             order_index: i
           })
@@ -114,10 +189,11 @@ const WorkoutEditor = () => {
         if (setsError) throw setsError;
       }
 
+      showToast(isTemplate ? 'Routine saved successfully' : 'Workout saved successfully', 'success');
       navigate('/');
     } catch (err) {
       console.error(err);
-      alert('Error saving workout');
+      showToast('Error saving workout', 'error');
     } finally {
       setSaving(false);
     }
@@ -138,17 +214,35 @@ const WorkoutEditor = () => {
           <input 
             value={name}
             onChange={(e) => setName(e.target.value)}
+            placeholder={isTemplate ? "Routine Name (e.g. Leg Day)" : "Workout Name"}
             className="w-full bg-transparent text-center font-black italic uppercase tracking-tighter outline-none focus:text-primary"
-            aria-label="Nombre del entrenamiento"
+            aria-label={isTemplate ? "Nombre de la rutina" : "Nombre del entrenamiento"}
           />
         </h1>
-        <button 
-          onClick={saveWorkout} 
-          disabled={saving || exercises.length === 0}
-          className={`p-2 rounded-xl bg-primary/10 text-primary ${saving ? 'animate-pulse' : ''}`}
-        >
-          <Save size={20} />
-        </button>
+        <div className="flex items-center space-x-2">
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+            <button 
+              onClick={() => setIsTemplate(false)}
+              className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition-all ${!isTemplate ? 'bg-primary text-black shadow-lg' : 'text-white/30 hover:text-white/50'}`}
+            >
+              Session
+            </button>
+            <button 
+              onClick={() => setIsTemplate(true)}
+              className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition-all ${isTemplate ? 'bg-primary text-black shadow-lg' : 'text-white/30 hover:text-white/50'}`}
+            >
+              Routine
+            </button>
+          </div>
+          <button 
+            onClick={saveWorkout} 
+            disabled={saving || exercises.length === 0}
+            className={`p-2.5 rounded-xl bg-primary text-black hover:scale-105 active:scale-95 transition-all shadow-lg ${saving ? 'animate-pulse' : ''}`}
+            title="Save changes"
+          >
+            <Save size={20} />
+          </button>
+        </div>
       </div>
 
       <div className="pt-20 px-4 space-y-6 max-w-lg mx-auto">

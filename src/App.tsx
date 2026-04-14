@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard';
 import WorkoutEditor from './pages/WorkoutEditor';
 import History from './pages/History';
 import ProfilePage from './pages/Profile';
+import Planner from './pages/Planner';
+import { NotificationProvider } from './context/NotificationContext';
 
 const App = () => {
   const [session, setSession] = useState<any>(null);
@@ -40,15 +42,18 @@ const App = () => {
   }
 
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/workout" element={<WorkoutEditor />} />
-        <Route path="/history" element={<History />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Layout>
+    <NotificationProvider>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/workout" element={<WorkoutEditor />} />
+          <Route path="/history" element={<History />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/planner" element={<Planner />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Layout>
+    </NotificationProvider>
   );
 };
 
