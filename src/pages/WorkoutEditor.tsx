@@ -58,13 +58,16 @@ const WorkoutEditor = () => {
       setIsTemplate(false);
     }
 
+    interface DBSet { weight: number, reps: number, completed: boolean, order_index: number }
+    interface DBWorkoutExercise { order_index: number, exercise: Exercise, sets: DBSet[] }
+
     const loadedExercises: WorkoutExerciseState[] = workout.workout_exercises
-      .sort((a: any, b: any) => a.order_index - b.order_index)
-      .map((we: any) => ({
+      .sort((a: DBWorkoutExercise, b: DBWorkoutExercise) => a.order_index - b.order_index)
+      .map((we: DBWorkoutExercise) => ({
         exercise: we.exercise,
-        sets: we.sets.sort((a: any, b: any) => a.order_index - b.order_index).map((s: any) => ({
-          weight: s.weight.toString(),
-          reps: s.reps.toString(),
+        sets: we.sets.sort((a: DBSet, b: DBSet) => a.order_index - b.order_index).map((s: DBSet) => ({
+          weight: s.weight ? s.weight.toString() : '',
+          reps: s.reps ? s.reps.toString() : '',
           completed: s.completed
         }))
       }));
@@ -100,8 +103,10 @@ const WorkoutEditor = () => {
     const set = newExercises[exerciseIndex].sets[setIndex];
     if (field === 'completed') {
       set.completed = value as boolean;
-    } else {
-      (set as any)[field] = value as string;
+    } else if (field === 'weight') {
+      set.weight = value as string;
+    } else if (field === 'reps') {
+      set.reps = value as string;
     }
     setExercises(newExercises);
   };

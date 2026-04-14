@@ -19,36 +19,52 @@ const Planner = () => {
   const { showToast } = useNotification();
 
   useEffect(() => {
-    fetchSchedules();
-    fetchAvailableWorkouts();
-    fetchCompletions();
+    const fetchAllData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // 1. Fetch Templates
+      const p1 = supabase
+        .from('workouts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_template', true)
+        .order('name', { ascending: true });
+
+      // 2. Fetch Schedules
+      const p2 = supabase
+        .from('schedules')
+        .select('*, workout:workouts(*)')
+        .order('day_of_week', { ascending: true });
+
+      // 3. Fetch Completions
+      const d = new Date();
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const start = new Date(d.setDate(diff));
+      start.setHours(0,0,0,0);
+      const startOfWeek = start.toISOString().split('T')[0];
+
+      const p3 = supabase
+        .from('schedule_completions')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('completed_at', startOfWeek);
+
+      const [resTemplates, resSchedules, resCompletions] = await Promise.all([p1, p2, p3]);
+
+      if (!resTemplates.error) setTemplates(resTemplates.data || []);
+      if (!resSchedules.error) setSchedules(resSchedules.data || []);
+      if (!resCompletions.error) setCompletions(resCompletions.data || []);
+
+      setLoading(false);
+    };
+
+    fetchAllData();
   }, []);
-
-  const getStartOfWeek = () => {
-    const d = new Date();
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    const start = new Date(d.setDate(diff));
-    start.setHours(0,0,0,0);
-    return start.toISOString().split('T')[0];
-  };
-
-  const fetchCompletions = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const startOfWeek = getStartOfWeek();
-    
-    // We fetch completions from the start of the current week onwards
-    const { data, error } = await supabase
-      .from('schedule_completions')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('completed_at', startOfWeek);
-
-    if (error) console.error('Error fetching completions:', error);
-    else setCompletions(data || []);
-  };
 
   const fetchSchedules = async () => {
     const { data, error } = await supabase
@@ -58,22 +74,6 @@ const Planner = () => {
     
     if (error) console.error('Error fetching schedules:', error);
     else setSchedules(data || []);
-    setLoading(false);
-  };
-
-  const fetchAvailableWorkouts = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('workouts')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_template', true)
-      .order('name', { ascending: true });
-    
-    if (error) console.error('Error fetching workouts:', error);
-    else setTemplates(data || []);
   };
 
   const handleAddWorkoutToDay = async (workoutId: string) => {

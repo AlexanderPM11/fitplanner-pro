@@ -1,26 +1,109 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
 import { motion } from 'framer-motion';
-import { Plus, ChevronRight, Activity, Trophy, Dumbbell } from 'lucide-react';
+import { Plus, ChevronRight, Activity, Dumbbell, CalendarCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import type { Profile } from '../types';
+
+interface DashboardWorkoutSet {
+  weight: number | null;
+  reps: number | null;
+  completed: boolean;
+}
+
+interface DashboardWorkoutExercise {
+  sets: DashboardWorkoutSet[];
+}
+
+interface RecentWorkout {
+  id: string;
+  name: string | null;
+  started_at: string;
+  workout_exercises: DashboardWorkoutExercise[];
+}
 
 const Dashboard = () => {
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [weeklyVolume, setWeeklyVolume] = useState<number>(0);
+  const [weeklyWorkoutsCount, setWeeklyWorkoutsCount] = useState<number>(0);
+  const [recentWorkouts, setRecentWorkouts] = useState<RecentWorkout[]>([]);
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
 
   useEffect(() => {
-    async function getProfile() {
+    async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        setProfile(data);
+      if (!user) return;
+
+      // 1. Fetch Profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (profileData) setProfile(profileData);
+
+      // Calculate start of week (Sunday or Monday, let's use a 7 day ago window for simplicity or true start of week)
+      const now = new Date();
+      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      // 2. Fetch Weekly Metrics (Workouts completed this week)
+      const { data: weeklyData } = await supabase
+        .from('workouts')
+        .select(`
+          id,
+          workout_exercises (
+            sets ( weight, reps, completed )
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('is_template', false)
+        .not('completed_at', 'is', null)
+        .gte('started_at', startOfWeek.toISOString());
+
+      if (weeklyData) {
+        setWeeklyWorkoutsCount(weeklyData.length);
+        
+        let totalVolume = 0;
+        weeklyData.forEach(workout => {
+          workout.workout_exercises.forEach((we: DashboardWorkoutExercise) => {
+            we.sets.forEach((set: DashboardWorkoutSet) => {
+              if (set.completed && set.weight && set.reps) {
+                totalVolume += (set.weight * set.reps);
+              }
+            });
+          });
+        });
+        setWeeklyVolume(totalVolume);
       }
+
+      // 3. Fetch Recent Activity (Last 3 workouts)
+      const { data: recentData } = await supabase
+        .from('workouts')
+        .select(`
+          id,
+          name,
+          started_at,
+          workout_exercises (
+            sets ( weight, reps, completed )
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('is_template', false)
+        .not('completed_at', 'is', null)
+        .order('started_at', { ascending: false })
+        .limit(3);
+
+      if (recentData) {
+        setRecentWorkouts(recentData);
+      }
+      
+      setLoadingMetrics(false);
     }
-    getProfile();
+    fetchData();
   }, []);
 
   return (
@@ -54,9 +137,11 @@ const Dashboard = () => {
         >
           <div className="flex items-center text-white/30 mb-2">
             <Activity size={14} className="mr-1" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Volume This Week</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Volumen Semanal</span>
           </div>
-          <p className="text-2xl font-black italic">-- <span className="text-xs font-normal text-white/30 not-italic">kg</span></p>
+          <p className="text-2xl font-black italic">
+            {loadingMetrics ? '--' : weeklyVolume.toLocaleString()} <span className="text-xs font-normal text-white/30 not-italic">kg</span>
+          </p>
         </motion.div>
 
         <motion.div 
@@ -64,10 +149,12 @@ const Dashboard = () => {
           className="glass-card p-5 border-l-4 border-l-secondary"
         >
           <div className="flex items-center text-white/30 mb-2">
-            <Trophy size={14} className="mr-1" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">PRs Set</span>
+            <CalendarCheck size={14} className="mr-1" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Sesiones (Semana)</span>
           </div>
-          <p className="text-2xl font-black italic">--</p>
+          <p className="text-2xl font-black italic">
+            {loadingMetrics ? '--' : weeklyWorkoutsCount}
+          </p>
         </motion.div>
       </div>
 
@@ -93,25 +180,50 @@ const Dashboard = () => {
       {/* Recent Activity List */}
       <div>
         <div className="flex justify-between items-center mb-4">
-          <h4 className="font-bold text-lg uppercase tracking-tight italic">Recent Activity</h4>
-          <Link to="/history" className="text-primary text-xs font-bold uppercase hover:underline">View All</Link>
+          <h4 className="font-bold text-lg uppercase tracking-tight italic">Actividad Reciente</h4>
+          <Link to="/history" className="text-primary text-xs font-bold uppercase hover:underline">Ver Todo</Link>
         </div>
         
         <div className="space-y-3">
-          {[1, 2].map((i) => (
-            <div key={i} className="glass-card p-4 flex items-center justify-between opacity-50 grayscale">
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mr-4">
-                  <Activity size={18} />
-                </div>
-                <div>
-                  <h5 className="font-bold text-sm">Example Workout</h5>
-                  <p className="text-[10px] text-white/30">Complete this to see your history</p>
-                </div>
-              </div>
-              <ChevronRight size={16} className="text-white/20" />
+          {loadingMetrics ? (
+            <div className="glass-card p-4 flex items-center justify-center opacity-50 animate-pulse">
+              <span className="text-sm font-bold uppercase tracking-widest text-white/30">Cargando...</span>
             </div>
-          ))}
+          ) : recentWorkouts.length > 0 ? (
+            recentWorkouts.map((workout: RecentWorkout) => {
+              let vol = 0;
+              workout.workout_exercises?.forEach((we: DashboardWorkoutExercise) => {
+                we.sets?.forEach((set: DashboardWorkoutSet) => {
+                  if (set.completed && set.weight && set.reps) {
+                    vol += (set.weight * set.reps);
+                  }
+                });
+              });
+
+              return (
+                <div key={workout.id} className="glass-card p-4 flex items-center justify-between group hover:border-primary/50 transition-colors">
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mr-4 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
+                      <Activity size={18} />
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-sm tracking-tight">{workout.name || 'Sesión sin nombre'}</h5>
+                      <p className="text-[10px] text-white/50 uppercase font-bold tracking-wider">
+                        {format(new Date(workout.started_at), "d MMM, yyyy", { locale: es })} • {vol} kg
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-white/20 group-hover:text-primary transition-colors" />
+                </div>
+              );
+            })
+          ) : (
+             <div className="glass-card p-6 text-center opacity-50 flex flex-col items-center justify-center">
+               <Dumbbell size={24} className="mb-2 text-white/30" />
+               <p className="text-sm font-medium">Aún no hay actividad.</p>
+               <span className="text-[10px] text-white/30 uppercase tracking-widest mt-1">Completa una sesión para verla aquí.</span>
+             </div>
+          )}
         </div>
       </div>
     </div>

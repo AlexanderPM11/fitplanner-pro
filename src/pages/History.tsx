@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
 import { motion } from 'framer-motion';
-import { Calendar, ChevronRight, Dumbbell, Trash2, Edit2, Bookmark, Clock } from 'lucide-react';
+import { Calendar, Dumbbell, Trash2, Edit2, Bookmark, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Workout } from '../types';
 import { Helmet } from 'react-helmet-async';
@@ -15,7 +15,7 @@ const History = () => {
   const { showToast, confirm } = useNotification();
 
   const fetchHistory = async () => {
-    setLoading(true);
+
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data } = await supabase
