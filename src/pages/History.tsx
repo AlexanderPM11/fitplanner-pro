@@ -14,22 +14,22 @@ const History = () => {
   const [activeTab, setActiveTab] = useState<'sessions' | 'routines'>('sessions');
   const { showToast, confirm } = useNotification();
 
-  const fetchHistory = async () => {
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data } = await supabase
-        .from('workouts')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('started_at', { ascending: false });
-      if (data) setWorkouts(data);
-    }
-    setLoading(false);
-  };
-
   useEffect(() => {
-    fetchHistory();
+    const initFetch = async () => {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('workouts')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('started_at', { ascending: false });
+        if (data) setWorkouts(data);
+      }
+      setLoading(false);
+    };
+
+    initFetch();
   }, []);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {

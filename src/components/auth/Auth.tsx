@@ -39,8 +39,12 @@ const Auth = () => {
         });
         if (error) throw error;
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Ocurrió un error inesperado.');
+      }
     } finally {
       setLoading(false);
     }
@@ -57,8 +61,12 @@ const Auth = () => {
         }
       });
       if (error) throw error;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Ocurrió un error inesperado al iniciar sesión con Google.');
+      }
       setLoading(false);
     }
   };

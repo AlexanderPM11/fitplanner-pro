@@ -260,14 +260,30 @@ const WorkoutEditor = () => {
               exit={{ opacity: 0, scale: 0.95 }}
               className="glass-card overflow-hidden"
             >
-              <div className="p-4 bg-white/5 flex justify-between items-center">
-                <div>
-                  <h3 className="font-black italic uppercase tracking-tight text-primary">{ex.exercise.name}</h3>
-                  <p className="text-[10px] text-white/30 uppercase font-bold">{ex.exercise.category}</p>
+              <div className="flex flex-col">
+                <div className="p-4 bg-white/5 flex justify-between items-center">
+                  <div className="flex items-center space-x-3">
+                    {ex.exercise.image_url && (
+                      <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-white/5 border border-white/10 group/media cursor-pointer relative">
+                        {ex.exercise.image_url.includes('.mp4') ? (
+                          <video src={ex.exercise.image_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={ex.exercise.image_url} alt={ex.exercise.name} className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="font-black italic uppercase tracking-tight text-primary">{ex.exercise.name}</h3>
+                      <p className="text-[10px] text-white/30 uppercase font-bold">{ex.exercise.category}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => removeExercise(exIdx)} className="text-white/20 hover:text-red-400">
+                    <Trash2 size={16} />
+                  </button>
                 </div>
-                <button onClick={() => removeExercise(exIdx)} className="text-white/20 hover:text-red-400">
-                  <Trash2 size={16} />
-                </button>
+                
+                {/* Reference Media Expanded (Optional/Hover or just visible) */}
+                {/* Note: We keep it compact by default, but the thumbnail is there for reference */}
               </div>
 
               <div className="p-4 space-y-2">

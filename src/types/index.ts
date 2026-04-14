@@ -10,6 +10,7 @@ export interface Exercise {
   name: string;
   category: string;
   description: string | null;
+  image_url: string | null;
 }
 
 export interface Workout {

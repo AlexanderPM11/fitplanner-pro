@@ -9,9 +9,10 @@ import History from './pages/History';
 import ProfilePage from './pages/Profile';
 import Planner from './pages/Planner';
 import { NotificationProvider } from './context/NotificationContext';
+import type { Session } from '@supabase/supabase-js';
 
 const App = () => {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
