@@ -8,6 +8,4 @@ dist
 .vscode
 *.md
 Dockerfile
-nginx.conf
-package-lock.json
-yarn.lock
+Dockerfile
