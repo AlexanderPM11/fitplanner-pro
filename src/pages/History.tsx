@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
 import { motion } from 'framer-motion';
 import { Calendar, ChevronRight, Dumbbell } from 'lucide-react';
-import { Workout } from '../types';
+import type { Workout } from '../types';
+import { Helmet } from 'react-helmet-async';
 
 const History = () => {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -34,6 +35,10 @@ const History = () => {
 
   return (
     <div className="space-y-6 max-w-lg mx-auto pb-8">
+      <Helmet>
+        <title>Historial | FitPlanner Pro</title>
+        <meta name="description" content="Revisa tu historial de entrenamientos y analiza tu consistencia a lo largo del tiempo." />
+      </Helmet>
       <header>
         <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Training Log</h2>
         <h1 className="text-3xl font-black tracking-tight italic uppercase">History</h1>

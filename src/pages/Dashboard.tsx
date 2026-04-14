@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
 import { motion } from 'framer-motion';
-import { Plus, ChevronRight, Activity, Trophy } from 'lucide-react';
+import { Plus, ChevronRight, Activity, Trophy, Dumbbell } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 
 const Dashboard = () => {
   const [profile, setProfile] = useState<any>(null);
@@ -26,6 +27,10 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8 max-w-lg mx-auto">
+      <Helmet>
+        <title>Dashboard | FitPlanner Pro</title>
+        <meta name="description" content="Visualiza tu progreso, volumen semanal y récords personales en tu tablero de FitPlanner Pro." />
+      </Helmet>
       {/* Header */}
       <header className="flex justify-between items-center">
         <div>

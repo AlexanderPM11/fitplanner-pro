@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../api/supabase';
 import { Search, Plus, X } from 'lucide-react';
-import { Exercise } from '../../types';
+import type { Exercise } from '../../types';
 
 interface ExercisePickerProps {
   onSelect: (exercise: Exercise) => void;

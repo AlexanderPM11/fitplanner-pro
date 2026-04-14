@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../api/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Trash2, Check, ArrowLeft, Play, Save } from 'lucide-react';
-import { Exercise } from '../types';
+import { Plus, Trash2, Check, ArrowLeft, Save } from 'lucide-react';
+import type { Exercise } from '../types';
 import ExercisePicker from '../components/workout/ExercisePicker';
+import { Helmet } from 'react-helmet-async';
 
 interface WorkoutExerciseState {
   exercise: Exercise;
@@ -55,9 +56,14 @@ const WorkoutEditor = () => {
     }
   };
 
-  const updateSet = (exerciseIndex: number, setIndex: number, field: string, value: any) => {
+  const updateSet = (exerciseIndex: number, setIndex: number, field: keyof WorkoutExerciseState['sets'][0], value: string | boolean) => {
     const newExercises = [...exercises];
-    (newExercises[exerciseIndex].sets[setIndex] as any)[field] = value;
+    const set = newExercises[exerciseIndex].sets[setIndex];
+    if (field === 'completed') {
+      set.completed = value as boolean;
+    } else {
+      (set as any)[field] = value as string;
+    }
     setExercises(newExercises);
   };
 
@@ -129,16 +135,23 @@ const WorkoutEditor = () => {
 
   return (
     <div className="min-h-screen bg-background pb-32">
+      <Helmet>
+        <title>{name} | FitPlanner Pro</title>
+        <meta name="description" content="Registra tus ejercicios, series y repeticiones. Controla tu progreso en tiempo real." />
+      </Helmet>
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 glass-card rounded-none border-t-0 p-4 z-40 flex justify-between items-center">
         <button onClick={() => navigate(-1)} className="p-2 bg-white/5 rounded-xl">
           <ArrowLeft size={20} />
         </button>
-        <input 
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="bg-transparent text-center font-black italic uppercase tracking-tighter outline-none focus:text-primary"
-        />
+        <h1 className="flex-1">
+          <input 
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full bg-transparent text-center font-black italic uppercase tracking-tighter outline-none focus:text-primary"
+            aria-label="Nombre del entrenamiento"
+          />
+        </h1>
         <button 
           onClick={saveWorkout} 
           disabled={saving || exercises.length === 0}

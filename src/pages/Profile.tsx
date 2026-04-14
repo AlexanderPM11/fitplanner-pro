@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
-import { motion } from 'framer-motion';
 import { LogOut, User as UserIcon, Shield, Settings, Bell, CircleCheck } from 'lucide-react';
-import { Profile } from '../types';
+import type { Profile } from '../types';
+import { Helmet } from 'react-helmet-async';
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -19,7 +18,6 @@ const ProfilePage = () => {
           .single();
         if (data) setProfile(data);
       }
-      setLoading(false);
     }
     fetchProfile();
   }, []);
@@ -30,6 +28,10 @@ const ProfilePage = () => {
 
   return (
     <div className="space-y-8 max-w-lg mx-auto pb-8">
+      <Helmet>
+        <title>Perfil | FitPlanner Pro</title>
+        <meta name="description" content="Gestiona tu cuenta de atleta, membresía y preferencias de notificaciones en FitPlanner Pro." />
+      </Helmet>
       <header>
         <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Athlete Account</h2>
         <h1 className="text-3xl font-black tracking-tight italic uppercase">Profile</h1>
