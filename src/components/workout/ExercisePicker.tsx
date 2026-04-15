@@ -96,7 +96,7 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ onSelect, onClose }) =>
 
       const { data, error } = await supabase
         .from('exercises')
-        .insert({
+        .upsert({
           name: newName.trim(),
           category: newCategory.trim(),
           user_id: user.id,
@@ -107,6 +107,9 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ onSelect, onClose }) =>
           difficulty: enrichedDetail?.difficultyLevel || null,
           male_activation_url: enrichedDetail?.maleMuscleActivationUrl || null,
           female_activation_url: enrichedDetail?.femaleMuscleActivationUrl || null
+        }, {
+          onConflict: 'name,user_id',
+          ignoreDuplicates: false
         })
         .select()
         .single();

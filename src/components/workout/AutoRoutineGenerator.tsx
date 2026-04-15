@@ -118,37 +118,36 @@ const AutoRoutineGenerator: React.FC<AutoRoutineGeneratorProps> = ({ onGenerated
       for (const apiEx of enrichedExercises) {
         const displayName = apiEx.name.charAt(0).toUpperCase() + apiEx.name.slice(1);
 
-        const { data: localEx } = await supabase
+        // Standardize data object for both insert and update
+        const exerciseData = {
+          name: displayName,
+          category: apiEx.bodyPart || muscle.id,
+          user_id: user.id,
+          image_url: apiEx.imageUrl,
+          video_url: apiEx.videoUrl || null,
+          description: apiEx.overview || null,
+          instructions: apiEx.instructions || null,
+          tips: apiEx.exerciseTips || null,
+          difficulty: apiEx.difficultyLevel || null,
+          male_activation_url: apiEx.maleMuscleActivationUrl || null,
+          female_activation_url: apiEx.femaleMuscleActivationUrl || null,
+          gender: gender
+        };
+
+        // UPSERT: Create if doesn't exist, update if it does (matching by name and user_id)
+        const { data: syncedEx, error: syncError } = await supabase
           .from('exercises')
-          .select('*')
-          .eq('name', displayName)
-          .maybeSingle();
+          .upsert(exerciseData, { 
+            onConflict: 'name,user_id',
+            ignoreDuplicates: false // We WANT to overwrite with new API data
+          })
+          .select()
+          .single();
 
-        if (localEx) {
-          finalExercises.push(localEx);
+        if (!syncError && syncedEx) {
+          finalExercises.push(syncedEx);
         } else {
-              const { data: newEx, error: insertError } = await supabase
-                .from('exercises')
-                .insert({
-                  name: displayName,
-                  category: apiEx.bodyPart || muscle.id,
-                  user_id: user.id,
-                  image_url: apiEx.imageUrl,
-                  video_url: apiEx.videoUrl || null,
-                  description: apiEx.overview || null,
-                  instructions: apiEx.instructions || null,
-                  tips: apiEx.exerciseTips || null,
-                  difficulty: apiEx.difficultyLevel || null,
-                  male_activation_url: apiEx.maleMuscleActivationUrl || null,
-                  female_activation_url: apiEx.femaleMuscleActivationUrl || null,
-                  gender: gender
-                })
-                .select()
-                .single();
-
-          if (!insertError && newEx) {
-            finalExercises.push(newEx);
-          }
+          console.error('Error syncing exercise:', syncError);
         }
       }
 
