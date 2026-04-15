@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../api/supabase';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { Plus, Trash2, Check, ArrowLeft, Save, Dumbbell, Loader2, Timer, Maximize2, ChevronDown, Info, Lightbulb, Activity, TimerOff, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Check, ArrowLeft, Save, Dumbbell, Loader2, Timer, ChevronDown, Info, Lightbulb, Activity, TimerOff, GripVertical } from 'lucide-react';
 import type { Exercise } from '../types';
 import ExercisePicker from '../components/workout/ExercisePicker';
 import AutoRoutineGenerator from '../components/workout/AutoRoutineGenerator';

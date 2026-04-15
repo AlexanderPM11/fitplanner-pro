@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { motion, Reorder } from 'framer-motion';
 import { Plus, Search, Dumbbell, Trash2, Play, GripVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
