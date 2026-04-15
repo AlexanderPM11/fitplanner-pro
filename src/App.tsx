@@ -8,6 +8,7 @@ import WorkoutEditor from './pages/WorkoutEditor';
 import History from './pages/History';
 import ProfilePage from './pages/Profile';
 import Planner from './pages/Planner';
+import Routines from './pages/Routines';
 import { NotificationProvider } from './context/NotificationContext';
 import type { Session } from '@supabase/supabase-js';
 
@@ -51,6 +52,7 @@ const App = () => {
           <Route path="/history" element={<History />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/planner" element={<Planner />} />
+          <Route path="/routines" element={<Routines />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

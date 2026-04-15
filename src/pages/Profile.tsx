@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../api/supabase';
-import { LogOut, User as UserIcon, Shield, Settings, Bell, CircleCheck } from 'lucide-react';
+import { LogOut, User as UserIcon, Shield, Settings, Bell, CircleCheck, History, ChevronRight } from 'lucide-react';
 import type { Profile } from '../types';
 import { Helmet } from 'react-helmet-async';
 
@@ -33,8 +34,8 @@ const ProfilePage = () => {
         <meta name="description" content="Gestiona tu cuenta de atleta, membresía y preferencias de notificaciones en FitPlanner Pro." />
       </Helmet>
       <header>
-        <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Athlete Account</h2>
-        <h1 className="text-3xl font-black tracking-tight italic uppercase">Profile</h1>
+        <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Cuenta de Atleta</h2>
+        <h1 className="text-3xl font-black tracking-tight italic uppercase">Perfil</h1>
       </header>
 
       {/* User Info Card */}
@@ -43,22 +44,22 @@ const ProfilePage = () => {
           {profile?.full_name?.charAt(0) || <UserIcon size={32} />}
         </div>
         <div>
-          <h2 className="text-xl font-black italic uppercase tracking-tighter">{profile?.full_name || 'Athlete'}</h2>
+          <h2 className="text-xl font-black italic uppercase tracking-tighter">{profile?.full_name || 'Atleta'}</h2>
           <p className="text-white/30 text-xs font-bold uppercase tracking-widest flex items-center">
-            <Shield size={12} className="mr-1 text-primary" /> Pro Member
+            <Shield size={12} className="mr-1 text-primary" /> Miembro Pro
           </p>
         </div>
       </div>
 
       {/* Settings Sections */}
       <div className="space-y-4">
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/20 ml-2">Preferences</h3>
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/20 ml-2">Preferencias</h3>
         
         <div className="glass-card overflow-hidden">
           <div className="p-4 flex items-center justify-between border-b border-white/5">
             <div className="flex items-center space-x-3">
               <Settings size={18} className="text-white/30" />
-              <span className="font-bold text-sm tracking-tight italic uppercase">App Settings</span>
+              <span className="font-bold text-sm tracking-tight italic uppercase">Ajustes de App</span>
             </div>
             <div className="w-8 h-4 bg-primary/10 rounded-full relative">
               <div className="absolute left-1 top-1 w-2 h-2 bg-primary rounded-full" />
@@ -68,20 +69,31 @@ const ProfilePage = () => {
           <div className="p-4 flex items-center justify-between border-b border-white/5">
             <div className="flex items-center space-x-3">
               <Bell size={18} className="text-white/30" />
-              <span className="font-bold text-sm tracking-tight italic uppercase">Notifications</span>
+              <span className="font-bold text-sm tracking-tight italic uppercase">Notificaciones</span>
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-[10px] text-primary font-black uppercase italic">Active</span>
+              <span className="text-[10px] text-primary font-black uppercase italic">Activo</span>
               <CircleCheck size={14} className="text-primary" />
             </div>
           </div>
+
+          <Link 
+            to="/history"
+            className="p-4 flex items-center justify-between border-b border-white/5 hover:bg-white/5 transition-colors"
+          >
+            <div className="flex items-center space-x-3">
+              <History size={18} className="text-white/30" />
+              <span className="font-bold text-sm tracking-tight italic uppercase">Historial de Entrenamiento</span>
+            </div>
+            <ChevronRight size={16} className="text-white/20" />
+          </Link>
 
           <button 
             onClick={handleSignOut}
             className="w-full p-4 flex items-center space-x-3 text-red-500 hover:bg-red-500/5 transition-colors"
           >
             <LogOut size={18} />
-            <span className="font-bold text-sm tracking-tight italic uppercase">Secure Logout</span>
+            <span className="font-bold text-sm tracking-tight italic uppercase">Cerrar Sesión</span>
           </button>
         </div>
       </div>

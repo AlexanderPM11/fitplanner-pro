@@ -12,7 +12,7 @@ interface WeeklyCalendarProps {
 }
 
 const DAYS = [
-  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+  'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
 ];
 
 const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ 

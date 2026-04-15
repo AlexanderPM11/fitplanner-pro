@@ -92,7 +92,7 @@ const Planner = () => {
 
     if (error) {
       console.error('Error adding schedule:', error);
-      showToast('This workout is already scheduled for this day.', 'error');
+      showToast('Esta rutina ya está programada para este día.', 'error');
     } else {
       setShowAddModal(null);
       fetchSchedules();
@@ -154,7 +154,7 @@ const Planner = () => {
   return (
     <div className="space-y-8 pb-32">
       <Helmet>
-        <title>Weekly Planner | FitPlanner Pro</title>
+        <title>Mi Semana | FitPlanner Pro</title>
       </Helmet>
 
       <header>
@@ -162,10 +162,10 @@ const Planner = () => {
           <div className="p-2 bg-primary/10 rounded-xl text-primary">
             <Calendar size={20} />
           </div>
-          <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Training Organization</h2>
+          <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Organización de Entrenamiento</h2>
         </div>
-        <h1 className="text-3xl font-black tracking-tight italic uppercase">Weekly Planner</h1>
-        <p className="text-white/30 text-xs font-medium mt-1">Organize your training split from Monday to Sunday.</p>
+        <h1 className="text-3xl font-black tracking-tight italic uppercase">Mi Semana</h1>
+        <p className="text-white/30 text-xs font-medium mt-1">Organiza tu semana de entrenamiento de lunes a domingo.</p>
       </header>
 
       {loading ? (
@@ -202,7 +202,7 @@ const Planner = () => {
               className="relative w-full max-w-md bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
             >
               <div className="p-6 border-b border-white/5 flex justify-between items-center">
-                <h3 className="font-black italic uppercase tracking-tighter text-xl">Assign Routine</h3>
+                <h3 className="font-black italic uppercase tracking-tighter text-xl">Asignar Rutina</h3>
                 <button onClick={() => setShowAddModal(null)} className="p-2 hover:bg-white/5 rounded-xl">
                   <X size={20} />
                 </button>
@@ -213,7 +213,7 @@ const Planner = () => {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={16} />
                   <input 
                     type="text"
-                    placeholder="Search your routines..."
+                    placeholder="Busca tus rutinas..."
                     className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-10 pr-4 outline-none focus:border-primary/50 transition-colors text-sm"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -232,9 +232,9 @@ const Planner = () => {
                           <h4 className="font-bold uppercase italic text-sm group-hover:text-primary transition-colors truncate">{t.name}</h4>
                           <div className="flex items-center space-x-2 mt-0.5">
                             {t.is_template ? (
-                              <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">Routine</span>
+                              <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">Rutina</span>
                             ) : (
-                              <span className="text-[9px] bg-white/10 text-white/40 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">Past Session</span>
+                              <span className="text-[9px] bg-white/10 text-white/40 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">Sesión Pasada</span>
                             )}
                             <span className="text-[9px] text-white/20 uppercase font-black">
                               {new Date(t.started_at).toLocaleDateString()}
@@ -246,12 +246,12 @@ const Planner = () => {
                     ))
                   ) : (
                     <div className="text-center py-10 space-y-3">
-                      <p className="text-white/20 text-sm italic">You don't have any routines saved as templates yet.</p>
+                      <p className="text-white/20 text-sm italic">Aún no tienes rutinas guardadas como plantillas.</p>
                       <button 
                         onClick={() => navigate('/workout')}
                         className="text-primary font-bold uppercase text-xs tracking-widest hover:underline"
                       >
-                        Create a Routine
+                        Crear una Rutina
                       </button>
                     </div>
                   )}

@@ -55,12 +55,12 @@ const DayCard: React.FC<DayCardProps> = ({
               <div className="pr-12">
                 <div className="flex items-center space-x-2">
                   <h4 className={`font-bold text-xs truncate uppercase italic ${isCompleted(s.id) ? 'text-primary' : ''}`}>
-                    {s.workout?.name || 'Workout'}
+                    {s.workout?.name || 'Entrenamiento'}
                   </h4>
                   {isCompleted(s.id) && <CheckCircle size={10} className="text-primary" />}
                 </div>
                 <p className={`text-[10px] uppercase font-bold tracking-widest mt-0.5 ${isCompleted(s.id) ? 'text-primary/50' : 'text-white/30'}`}>
-                  {isCompleted(s.id) ? 'Completed' : 'Scheduled'}
+                  {isCompleted(s.id) ? 'Completado' : 'Programado'}
                 </p>
               </div>
               
@@ -68,7 +68,7 @@ const DayCard: React.FC<DayCardProps> = ({
                 <button 
                   onClick={() => onToggleCompletion(s.id)}
                   className={`p-1 rounded-md transition-colors ${isCompleted(s.id) ? 'bg-primary text-black' : 'bg-white/10 text-white/40 hover:text-white'}`}
-                  title={isCompleted(s.id) ? "Mark as Incomplete" : "Mark as Done"}
+                  title={isCompleted(s.id) ? "Marcar como incompleto" : "Marcar como completado"}
                 >
                   <CheckCircle size={10} />
                 </button>
@@ -76,7 +76,7 @@ const DayCard: React.FC<DayCardProps> = ({
                   <button 
                     onClick={() => onStartWorkout(s.workout_id)}
                     className="p-1 rounded-md bg-primary text-black hover:scale-110 transition-transform"
-                    title="Start Session"
+                    title="Empezar Sesión"
                   >
                     <Play size={10} fill="currentColor" />
                   </button>
@@ -84,7 +84,7 @@ const DayCard: React.FC<DayCardProps> = ({
                 <button 
                   onClick={() => onRemoveSchedule(s.id)}
                   className="p-1 rounded-md bg-red-500/10 text-red-500/40 hover:bg-red-500 hover:text-white transition-all"
-                  title="Remove"
+                  title="Eliminar"
                 >
                   <Trash2 size={10} />
                 </button>
@@ -93,7 +93,7 @@ const DayCard: React.FC<DayCardProps> = ({
           ))
         ) : (
           <div className="h-full flex flex-col items-center justify-center py-4 border-2 border-dashed border-white/5 rounded-2xl opacity-30">
-            <p className="text-[10px] uppercase font-bold tracking-widest">Rest Day</p>
+            <p className="text-[10px] uppercase font-bold tracking-widest">Día de Descanso</p>
           </div>
         )}
       </div>

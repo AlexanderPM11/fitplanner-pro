@@ -20,10 +20,11 @@ interface WorkoutExerciseState {
 
 const WorkoutEditor = () => {
   const navigate = useNavigate();
-  const [name, setName] = useState('New Workout');
+  const [name, setName] = useState('Nuevo Entrenamiento');
   const [exercises, setExercises] = useState<WorkoutExerciseState[]>([]);
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [isTemplate, setIsTemplate] = useState(false);
   const [expandedEx, setExpandedEx] = useState<number | null>(null);
   
@@ -41,7 +42,13 @@ const WorkoutEditor = () => {
   useEffect(() => {
     const templateId = searchParams.get('templateId');
     const editId = searchParams.get('editId');
+    const isNewTemplate = searchParams.get('template') === 'true';
     
+    if (isNewTemplate) {
+      setIsTemplate(true);
+      setName('Nueva Rutina');
+    }
+
     if (editId) {
       loadWorkoutData(editId, true);
     } else if (templateId) {
@@ -79,6 +86,7 @@ const WorkoutEditor = () => {
   };
 
   const loadWorkoutData = async (id: string, isEditing: boolean) => {
+    setLoading(true);
     const { data: workout, error: workoutError } = await supabase
       .from('workouts')
       .select('*, workout_exercises(*, exercise:exercises(*), sets(*))')
@@ -94,6 +102,7 @@ const WorkoutEditor = () => {
     setIsTemplate(workout.is_template);
     
     // If we are loading a template to START a workout, or cloning, we are logging a session
+    // BUT the user wants "Solo rutina" for now, so let's preserve template status if editing
     if (!isEditing) {
       setIsTemplate(false);
     }
@@ -113,6 +122,7 @@ const WorkoutEditor = () => {
       }));
 
     setExercises(loadedExercises);
+    setLoading(false);
   };
 
   const addExercise = (exercise: Exercise) => {
@@ -255,11 +265,35 @@ const WorkoutEditor = () => {
         if (setsError) throw setsError;
       }
 
-      showToast(isTemplate ? 'Routine saved successfully' : 'Workout saved successfully', 'success');
-      navigate('/');
+      showToast(isTemplate ? 'Rutina guardada con éxito' : 'Entrenamiento guardado con éxito', 'success');
+      navigate(isTemplate ? '/routines' : '/');
     } catch (err) {
       console.error(err);
-      showToast('Error saving workout', 'error');
+      showToast('Error al guardar', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteWorkout = async () => {
+    const editId = searchParams.get('editId');
+    if (!editId) return;
+
+    if (!window.confirm('¿Estás seguro de que quieres eliminar esta rutina?')) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('workouts')
+        .delete()
+        .eq('id', editId);
+      
+      if (error) throw error;
+      showToast('Rutina eliminada', 'success');
+      navigate('/routines');
+    } catch (err) {
+      console.error(err);
+      showToast('Error al eliminar', 'error');
     } finally {
       setSaving(false);
     }
@@ -280,38 +314,42 @@ const WorkoutEditor = () => {
           <input 
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={isTemplate ? "Routine Name (e.g. Leg Day)" : "Workout Name"}
-            className="w-full bg-transparent text-center font-black italic uppercase tracking-tighter outline-none focus:text-primary"
+            placeholder={isTemplate ? "Nombre de la Rutina (ej. Pierna)" : "Nombre del Entrenamiento"}
+            className="w-full bg-transparent text-center font-black italic uppercase tracking-tighter outline-none focus:text-primary px-4"
             aria-label={isTemplate ? "Nombre de la rutina" : "Nombre del entrenamiento"}
           />
         </h1>
         <div className="flex items-center space-x-2">
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+          {/* Toggle removed per user request: "Deja solo rutina" */}
+          {searchParams.get('editId') && (
             <button 
-              onClick={() => setIsTemplate(false)}
-              className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition-all ${!isTemplate ? 'bg-primary text-black shadow-lg' : 'text-white/30 hover:text-white/50'}`}
+              onClick={deleteWorkout} 
+              disabled={saving}
+              className="p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg"
+              title="Eliminar rutina"
             >
-              Session
+              <Trash2 size={20} />
             </button>
-            <button 
-              onClick={() => setIsTemplate(true)}
-              className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition-all ${isTemplate ? 'bg-primary text-black shadow-lg' : 'text-white/30 hover:text-white/50'}`}
-            >
-              Routine
-            </button>
-          </div>
+          )}
           <button 
             onClick={saveWorkout} 
             disabled={saving || exercises.length === 0}
             className={`p-2.5 rounded-xl bg-primary text-black hover:scale-105 active:scale-95 transition-all shadow-lg ${saving ? 'animate-pulse' : ''}`}
-            title="Save changes"
+            title="Guardar cambios"
           >
             <Save size={20} />
           </button>
         </div>
       </div>
 
-      <div className="pt-20 px-4 space-y-6 max-w-lg mx-auto">
+      {loading ? (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+          <Loader2 size={48} className="text-primary animate-spin" />
+          <p className="text-white/30 font-bold uppercase tracking-widest text-xs">Cargando datos...</p>
+        </div>
+      ) : (
+        <>
+          <div className="pt-20 px-4 space-y-6 max-w-lg mx-auto">
         <AnimatePresence>
           {exercises.map((ex, exIdx) => (
             <motion.div 
@@ -436,10 +474,10 @@ const WorkoutEditor = () => {
 
               <div className="p-4 space-y-2">
                 <div className="grid grid-cols-4 gap-2 text-[10px] uppercase font-bold text-white/30 mb-1 px-2">
-                  <div className="text-center">Set</div>
+                  <div className="text-center">Serie</div>
                   <div className="text-center">kg</div>
                   <div className="text-center">Reps</div>
-                  <div className="text-center">Done</div>
+                  <div className="text-center">Listo</div>
                 </div>
 
                 {ex.sets.map((set, setIdx) => (
@@ -472,7 +510,7 @@ const WorkoutEditor = () => {
                   onClick={() => addSet(exIdx)}
                   className="w-full py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-widest text-white/30 hover:bg-white/10 transition-colors"
                 >
-                  + Add Set
+                  + Añadir Serie
                 </button>
               </div>
             </motion.div>
@@ -486,7 +524,7 @@ const WorkoutEditor = () => {
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
             <Plus size={24} />
           </div>
-          <span className="font-bold uppercase tracking-tighter italic">Add Exercise</span>
+          <span className="font-bold uppercase tracking-tighter italic">Añadir Ejercicio</span>
         </button>
       </div>
 
@@ -559,7 +597,9 @@ const WorkoutEditor = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
+  )}
+</div>
   );
 };
 

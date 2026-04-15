@@ -121,15 +121,15 @@ const Dashboard = () => {
   return (
     <div className="space-y-8 max-w-lg mx-auto">
       <Helmet>
-        <title>Dashboard | FitPlanner Pro</title>
+        <title>Inicio | FitPlanner Pro</title>
         <meta name="description" content="Visualiza tu progreso, volumen semanal y récords personales en tu tablero de FitPlanner Pro." />
       </Helmet>
       {/* Header */}
       <header className="flex justify-between items-center">
         <div>
-          <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Athlete Dashboard</h2>
+          <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Panel del Atleta</h2>
           <h1 className="text-3xl font-black tracking-tight italic">
-            {profile?.full_name?.split(' ')[0] || 'CRUSH IT!'}
+            {profile?.full_name?.split(' ')[0] || '¡DALE DURO!'}
           </h1>
         </div>
         <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden">
@@ -173,14 +173,14 @@ const Dashboard = () => {
       {/* Active Session Call to Action */}
       <div className="relative group overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-primary to-secondary text-black shadow-[0_20px_50px_rgba(0,242,255,0.3)]">
         <div className="relative z-10">
-          <h3 className="text-2xl font-black italic mb-1 uppercase tracking-tighter">Ready to lift?</h3>
-          <p className="text-black/60 text-sm font-medium mb-6">Your next workout is waiting for you.</p>
+          <h3 className="text-2xl font-black italic mb-1 uppercase tracking-tighter">¿Listo para entrenar?</h3>
+          <p className="text-black/60 text-sm font-medium mb-6">Tu próximo entrenamiento te espera.</p>
           <Link 
-            to="/workout"
+            to="/routines"
             className="inline-flex items-center bg-black text-white px-6 py-3 rounded-2xl font-bold transition-transform active:scale-95"
           >
             <Plus size={20} className="mr-2" />
-            Start Session
+            Gestionar Rutinas
           </Link>
         </div>
         
@@ -231,7 +231,7 @@ const Dashboard = () => {
                             we.exercise.image_url.includes('.mp4') || we.exercise.image_url.includes('.webm') ? (
                               <video src={we.exercise.image_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
                             ) : (
-                              <img src={we.exercise.image_url} alt="exercise" className="w-full h-full object-cover" />
+                              <img src={we.exercise.image_url} alt="ejercicio" className="w-full h-full object-cover" />
                             )
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-white/5 bg-white/5 uppercase text-[8px] font-bold">
