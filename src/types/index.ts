@@ -11,6 +11,13 @@ export interface Exercise {
   category: string;
   description: string | null;
   image_url: string | null;
+  video_url?: string | null;
+  gender?: string | null;
+  instructions?: string[] | null;
+  tips?: string[] | null;
+  difficulty?: string | null;
+  male_activation_url?: string | null;
+  female_activation_url?: string | null;
 }
 
 export interface Workout {

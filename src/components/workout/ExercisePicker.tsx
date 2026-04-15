@@ -8,6 +8,7 @@ interface ExerciseDBItem {
   exerciseId: string;
   name: string;
   imageUrl: string;
+  videoUrl?: string;
   target?: string;
 }
 
@@ -29,6 +30,8 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ onSelect, onClose }) =>
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [enrichedDetail, setEnrichedDetail] = useState<any>(null);
   
   // External API States
   const [externalQuery, setExternalQuery] = useState('');
@@ -97,7 +100,13 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ onSelect, onClose }) =>
           name: newName.trim(),
           category: newCategory.trim(),
           user_id: user.id,
-          image_url: imageUrl
+          image_url: imageUrl,
+          video_url: videoUrl,
+          instructions: enrichedDetail?.instructions || null,
+          tips: enrichedDetail?.exerciseTips || null,
+          difficulty: enrichedDetail?.difficultyLevel || null,
+          male_activation_url: enrichedDetail?.maleMuscleActivationUrl || null,
+          female_activation_url: enrichedDetail?.femaleMuscleActivationUrl || null
         })
         .select()
         .single();
@@ -113,6 +122,8 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ onSelect, onClose }) =>
       setCreating(false);
       setNewImageFile(null);
       setPreviewUrl(null);
+      setVideoUrl(null);
+      setEnrichedDetail(null);
       setExternalResults([]);
     }
   };
@@ -161,14 +172,39 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ onSelect, onClose }) =>
     return map[target] || 'Otro';
   };
 
-  const selectExternalExercise = (ex: ExerciseDBItem) => {
-    // Uppercase first letter
-    const formattedName = ex.name.charAt(0).toUpperCase() + ex.name.slice(1);
-    setNewName(formattedName);
-    setNewCategory(ex.target ? mapTargetToCategory(ex.target) : 'Otro');
-    setPreviewUrl(ex.imageUrl);
-    setNewImageFile(null); // Clear any local upload
-    showToast('Media y datos pre-cargados', 'success');
+  const selectExternalExercise = async (ex: ExerciseDBItem) => {
+    const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
+    if (!apiKey) return;
+
+    setCreating(true); // Reuse creating state as loading indicator
+    showToast('Obteniendo detalles completos...', 'info');
+
+    try {
+      const response = await fetch(`https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises/${ex.exerciseId}`, {
+        method: 'GET',
+        headers: {
+          'x-rapidapi-key': apiKey,
+          'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com'
+        }
+      });
+      const res = await response.json();
+      const finalData = res.success ? res.data : ex;
+
+      // Uppercase first letter
+      const formattedName = finalData.name.charAt(0).toUpperCase() + finalData.name.slice(1);
+      setNewName(formattedName);
+      setNewCategory(finalData.target ? mapTargetToCategory(finalData.target) : 'Otro');
+      setPreviewUrl(finalData.imageUrl);
+      setVideoUrl(finalData.videoUrl || null);
+      setEnrichedDetail(finalData);
+      setNewImageFile(null); // Clear any local upload
+      showToast('Media y datos pre-cargados con éxito', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Error al cargar detalles extra', 'error');
+    } finally {
+      setCreating(false);
+    }
   };
 
 

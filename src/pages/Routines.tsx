@@ -5,6 +5,7 @@ import { Plus, Search, Dumbbell, Trash2, Play, AlertTriangle, X } from 'lucide-r
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useNotification } from '../context/NotificationContext';
+import ConfirmationModal from '../components/shared/ConfirmationModal';
 import type { Workout } from '../types';
 
 const Routines = () => {
@@ -175,50 +176,15 @@ const Routines = () => {
         </div>
       )}
 
-      {/* Custom Confirmation Modal */}
-      <AnimatePresence>
-        {confirmDeleteId && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setConfirmDeleteId(null)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="glass-card p-8 w-full max-w-sm relative z-10 border-red-500/20 shadow-2xl"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-6">
-                  <AlertTriangle size={32} />
-                </div>
-                <h3 className="text-xl font-black italic uppercase tracking-tighter mb-2 text-white">¿Eliminar Rutina?</h3>
-                <p className="text-sm text-white/50 mb-8 leading-relaxed">
-                  Esta acción no se puede deshacer. Perderás esta rutina de tu biblioteca permanentemente.
-                </p>
-                <div className="grid grid-cols-2 gap-3 w-full">
-                  <button 
-                    onClick={() => setConfirmDeleteId(null)}
-                    className="py-4 bg-white/5 hover:bg-white/10 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all"
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(confirmDeleteId)}
-                    className="py-4 bg-red-600 hover:bg-red-500 rounded-2xl font-black uppercase tracking-widest text-[10px] text-white shadow-lg shadow-red-600/20 transition-all"
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ConfirmationModal 
+        isOpen={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        title="¿Eliminar Rutina?"
+        message="Esta acción no se puede deshacer. Perderás esta rutina de tu biblioteca permanentemente."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+      />
     </div>
   );
 };
