@@ -124,15 +124,8 @@ const Dashboard = () => {
         .order('completed_at', { ascending: false });
 
       if (allWorkouts && allWorkouts.length > 0) {
-        let currentStreak = 0;
-        const processedWeeks = new Set<string>();
-        
-        // Simple logic: count workouts in the last 7 day windows
+        // Simple logic: session count in the last 30 days
         const oneDay = 24 * 60 * 60 * 1000;
-        const oneWeek = 7 * oneDay;
-        let lastDate = new Date();
-        
-        // To keep it simple for now: session count in the last 30 days
         setStreak(allWorkouts.filter(w => {
           const d = new Date(w.completed_at);
           return (now.getTime() - d.getTime()) < (30 * oneDay);
