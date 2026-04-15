@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Plus, ChevronRight, Activity, Dumbbell, CalendarCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';

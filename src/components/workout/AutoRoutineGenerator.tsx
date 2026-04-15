@@ -3,7 +3,7 @@ import { supabase } from '../../api/supabase';
 import { Sparkles, X, Loader2, Dumbbell, User } from 'lucide-react';
 import type { Exercise } from '../../types';
 import { useNotification } from '../../context/NotificationContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 interface AutoRoutineGeneratorProps {
   onGenerated: (exercises: Exercise[]) => void;

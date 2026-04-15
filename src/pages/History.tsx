@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Calendar, Dumbbell, Trash2, Edit2, Bookmark, Clock, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { Workout, Exercise } from '../types';
+import type { Workout } from '../types';
 import { Helmet } from 'react-helmet-async';
 import { useNotification } from '../context/NotificationContext';
 import MediaModal from '../components/shared/MediaModal';

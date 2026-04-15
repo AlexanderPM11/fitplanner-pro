@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
-import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, Award, Activity, Calendar, ChevronDown, Filter } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { TrendingUp, Award, Activity } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   AreaChart, Area, BarChart, Bar, Cell
 } from 'recharts';
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, subDays, isWithinInterval } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { format, startOfWeek } from 'date-fns';
 
 interface ProgressData {
   date: string;

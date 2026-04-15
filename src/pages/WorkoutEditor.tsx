@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../api/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Check, ArrowLeft, Save, Dumbbell, Loader2, Timer, X as CloseIcon, RotateCcw, Volume2, Maximize2, ChevronDown, Info, Lightbulb, Activity, TimerOff } from 'lucide-react';
+import { Plus, Trash2, Check, ArrowLeft, Save, Dumbbell, Loader2, Timer, Maximize2, ChevronDown, Info, Lightbulb, Activity, TimerOff } from 'lucide-react';
 import type { Exercise } from '../types';
 import ExercisePicker from '../components/workout/ExercisePicker';
 import AutoRoutineGenerator from '../components/workout/AutoRoutineGenerator';
@@ -35,7 +35,7 @@ const WorkoutEditor = () => {
   // Timer State
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isTimerActive, setIsTimerActive] = useState(false);
-  const [timerDuration, setTimerDuration] = useState(60);
+  const [timerDuration] = useState(60);
   
   // Fullscreen Preview State
   const [fsMedia, setFsMedia] = useState<{ url: string; title: string } | null>(null);
@@ -124,7 +124,6 @@ const WorkoutEditor = () => {
     }
 
     interface DBSet { weight: number, reps: number, completed: boolean, order_index: number }
-    interface DBWorkoutExercise { order_index: number, exercise: Exercise, sets: DBSet[] }
 
     const loadedExercises: WorkoutExerciseState[] = workout.workout_exercises
       .sort((a: any, b: any) => a.order_index - b.order_index)

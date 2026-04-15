@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Dumbbell, Trash2, Play, AlertTriangle, X } from 'lucide-react';
+import { Plus, Search, Dumbbell, Trash2, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useNotification } from '../context/NotificationContext';

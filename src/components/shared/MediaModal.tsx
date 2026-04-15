@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Maximize2, Activity } from 'lucide-react';
+import { X, Activity } from 'lucide-react';
 
 interface MediaModalProps {
   isOpen: boolean;
