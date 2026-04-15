@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Dumbbell, Trash2, Edit2, Bookmark, Clock, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Workout, Exercise } from '../types';
 import { Helmet } from 'react-helmet-async';
 import { useNotification } from '../context/NotificationContext';
+import MediaModal from '../components/shared/MediaModal';
 
 interface HistoryWorkout extends Workout {
 
@@ -22,6 +23,7 @@ const History = () => {
   const [workouts, setWorkouts] = useState<HistoryWorkout[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'sessions' | 'routines'>('sessions');
+  const [fsMedia, setFsMedia] = useState<{ url: string; title: string } | null>(null);
   const { showToast, confirm } = useNotification();
 
   useEffect(() => {
@@ -126,7 +128,16 @@ const History = () => {
                   {workout.workout_exercises?.slice(0, 3).map((we: any, idx: number) => {
                     const exercise = Array.isArray(we.exercise) ? we.exercise[0] : we.exercise;
                     return (
-                      <div key={idx} className="w-10 h-10 rounded-xl border-2 border-background bg-white/5 overflow-hidden shrink-0">
+                      <div 
+                        key={idx} 
+                        className="w-10 h-10 rounded-xl border-2 border-background bg-white/5 overflow-hidden shrink-0 hover:scale-110 hover:z-10 transition-transform cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (exercise?.image_url) {
+                            setFsMedia({ url: exercise.image_url, title: workout.name || 'Ejercicio' });
+                          }
+                        }}
+                      >
                         {exercise?.image_url ? (
                           exercise.image_url.includes('.mp4') || exercise.image_url.includes('.webm') ? (
                             <video src={exercise.image_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
@@ -178,6 +189,13 @@ const History = () => {
           <p className="text-sm font-medium">No workouts recorded yet.<br/>Time to get to work!</p>
         </div>
       )}
+
+      <MediaModal 
+        isOpen={!!fsMedia}
+        url={fsMedia?.url || ''}
+        title={fsMedia?.title || ''}
+        onClose={() => setFsMedia(null)}
+      />
     </div>
   );
 };

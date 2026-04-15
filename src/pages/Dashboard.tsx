@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, ChevronRight, Activity, Dumbbell, CalendarCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import MediaModal from '../components/shared/MediaModal';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Profile } from '../types';
@@ -32,6 +33,7 @@ const Dashboard = () => {
   const [weeklyWorkoutsCount, setWeeklyWorkoutsCount] = useState<number>(0);
   const [recentWorkouts, setRecentWorkouts] = useState<RecentWorkout[]>([]);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
+  const [fsMedia, setFsMedia] = useState<{ url: string; title: string } | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -215,7 +217,16 @@ const Dashboard = () => {
                   <div className="flex items-center">
                     <div className="flex -space-x-3 mr-4">
                       {workout.workout_exercises?.slice(0, 3).map((we: DashboardWorkoutExercise, idx: number) => (
-                        <div key={idx} className="w-10 h-10 rounded-xl border-2 border-background bg-white/5 overflow-hidden shrink-0">
+                        <div 
+                          key={idx} 
+                          className="w-10 h-10 rounded-xl border-2 border-background bg-white/5 overflow-hidden shrink-0 hover:scale-110 hover:z-10 transition-transform cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (we.exercise?.image_url) {
+                              setFsMedia({ url: we.exercise.image_url, title: workout.name || 'Ejercicio' });
+                            }
+                          }}
+                        >
                           {we.exercise?.image_url ? (
                             we.exercise.image_url.includes('.mp4') || we.exercise.image_url.includes('.webm') ? (
                               <video src={we.exercise.image_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
@@ -250,6 +261,13 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      <MediaModal 
+        isOpen={!!fsMedia}
+        url={fsMedia?.url || ''}
+        title={fsMedia?.title || ''}
+        onClose={() => setFsMedia(null)}
+      />
     </div>
   );
 };
