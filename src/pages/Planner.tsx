@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, X, Search } from 'lucide-react';
+import { Calendar, X, Search, RotateCcw } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import type { Schedule, Workout, ScheduleCompletion } from '../types';
 import WeeklyCalendar from '../components/planner/WeeklyCalendar';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../context/NotificationContext';
+import ConfirmationModal from '../components/shared/ConfirmationModal';
 
 const Planner = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const Planner = () => {
   const [completions, setCompletions] = useState<ScheduleCompletion[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState<number | null>(null); // day index
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { showToast } = useNotification();
 
@@ -147,6 +149,27 @@ const Planner = () => {
     }
   };
 
+  const handleClearAllCompletions = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || completions.length === 0) return;
+
+    const ids = completions.map(c => c.id);
+
+    const { error } = await supabase
+      .from('schedule_completions')
+      .delete()
+      .in('id', ids);
+
+    if (error) {
+      console.error('Error clearing completions:', error);
+      showToast('No se pudieron limpiar los checks.', 'error');
+    } else {
+      setCompletions([]);
+      setShowClearConfirm(false);
+      showToast('Semana reiniciada correctamente.', 'success');
+    }
+  };
+
   const filteredTemplates = templates.filter(t => 
     t.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -157,15 +180,27 @@ const Planner = () => {
         <title>Mi Semana | FitPlanner Pro</title>
       </Helmet>
 
-      <header>
-        <div className="flex items-center space-x-3 mb-1">
-          <div className="p-2 bg-primary/10 rounded-xl text-primary">
-            <Calendar size={20} />
+      <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <div className="flex items-center space-x-3 mb-1">
+            <div className="p-2 bg-primary/10 rounded-xl text-primary">
+              <Calendar size={20} />
+            </div>
+            <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Organización de Entrenamiento</h2>
           </div>
-          <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Organización de Entrenamiento</h2>
+          <h1 className="text-3xl font-black tracking-tight italic uppercase">Mi Semana</h1>
+          <p className="text-white/30 text-xs font-medium mt-1">Organiza tu semana de entrenamiento de lunes a domingo.</p>
         </div>
-        <h1 className="text-3xl font-black tracking-tight italic uppercase">Mi Semana</h1>
-        <p className="text-white/30 text-xs font-medium mt-1">Organiza tu semana de entrenamiento de lunes a domingo.</p>
+
+        {completions.length > 0 && (
+          <button 
+            onClick={() => setShowClearConfirm(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all group"
+          >
+            <RotateCcw size={16} className="text-white/40 group-hover:text-primary transition-colors" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/60 group-hover:text-white transition-colors">Reiniciar Semana</span>
+          </button>
+        )}
       </header>
 
       {loading ? (
@@ -261,6 +296,15 @@ const Planner = () => {
           </div>
         )}
       </AnimatePresence>
+      <ConfirmationModal 
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={handleClearAllCompletions}
+        title="¿Reiniciar Semana?"
+        message="Esto quitará el check de todas tus rutinas completadas en esta semana. Esta acción no se puede deshacer."
+        confirmText="Reiniciar"
+        cancelText="Cancelar"
+      />
     </div>
   );
 };

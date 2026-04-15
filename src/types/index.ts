@@ -28,6 +28,7 @@ export interface Workout {
   started_at: string;
   completed_at: string | null;
   is_template: boolean; // Assigned by DB default false
+  order_index?: number | null;
 }
 
 export interface Schedule {
