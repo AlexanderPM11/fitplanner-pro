@@ -3,7 +3,6 @@ import { supabase } from '../../api/supabase';
 import { X, Loader2, ChevronRight, LayoutGrid } from 'lucide-react';
 import type { Exercise } from '../../types';
 import ExerciseDetailSheet from './ExerciseDetailSheet';
-import { useNotification } from '../../context/NotificationContext';
 
 const CATEGORIES = ['Todos', 'Pecho', 'Espalda', 'Piernas', 'Hombros', 'Brazos', 'Glúteos', 'Abdomen', 'Core', 'Cardio', 'Full Body'];
 
