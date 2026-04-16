@@ -7,6 +7,7 @@ export interface Profile {
 
 export interface Exercise {
   id: string;
+  api_id?: string;
   name: string;
   category: string;
   description: string | null;

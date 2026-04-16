@@ -5,7 +5,7 @@ import type { Exercise } from '../../types';
 import ExerciseDetailSheet from './ExerciseDetailSheet';
 import { useNotification } from '../../context/NotificationContext';
 
-const CATEGORIES = ['Todos', 'Pecho', 'Espalda', 'Piernas', 'Hombros', 'Brazos', 'Core', 'Cardio', 'Full Body'];
+const CATEGORIES = ['Todos', 'Pecho', 'Espalda', 'Piernas', 'Hombros', 'Brazos', 'Glúteos', 'Abdomen', 'Core', 'Cardio', 'Full Body'];
 
 interface ExerciseMarketplaceProps {
   isOpen: boolean;
@@ -32,100 +32,147 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
     if (isOpen) fetchExercisesCategory(activeCategory);
   }, [isOpen, activeCategory]);
 
-  const mapApiToExercise = (apiData: any): Exercise => ({
-    id: apiData.exerciseId || `ext_${Date.now()}`,
-    name: apiData.name,
-    category: apiData.bodyParts?.[0] || 'Desconocido',
-    equipment: apiData.equipments?.[0] || 'Cualquiera',
-    image_url: apiData.imageUrl,
-    video_url: apiData.videoUrl || null,
-    description: null,
-    instructions: apiData.instructions || null,
-    tips: apiData.exerciseTips || null,
-    difficulty: apiData.difficulty || 'Normal',
-  });
-
   const fetchExercisesCategory = async (category: string) => {
     setLoading(true);
     
+    const catMap: Record<string, string> = {
+      'Pecho': 'chest', 'Espalda': 'back', 'Piernas': 'legs', 'Hombros': 'shoulders', 
+      'Brazos': 'arms', 'Glúteos': 'glute', 'Abdomen': 'waist', 'Core': 'abs', 'Cardio': 'cardio', 'Full Body': 'full body'
+    };
+
     const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
     if (!apiKey) {
       setLoading(false);
       return;
     }
 
-    const catMap: Record<string, string> = {
-      'Pecho': 'chest', 'Espalda': 'back', 'Piernas': 'legs', 'Hombros': 'shoulders', 
-      'Brazos': 'arms', 'Core': 'waist', 'Cardio': 'cardio', 'Full Body': 'full body'
-    };
+    const reverseMap: Record<string, string> = Object.entries(catMap).reduce((acc: any, [k, v]) => ({ ...acc, [v]: k }), {});
 
     try {
-      let url = `https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises?limit=30`;
-      if (category !== 'Todos' && catMap[category]) {
-        url = `https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises/search?search=${catMap[category]}`;
+      // 1. Intentar cargar desde el caché local (Supabase)
+      let query = supabase.from('exercises').select('*').limit(200);
+      if (category !== 'Todos') {
+        query = query.eq('category', category);
+      }
+      
+      const { data: localData } = await query.order('name');
+      
+      if (localData && localData.length > 0) {
+        setExercises(localData);
+        setLoading(false);
+        return;
       }
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'x-rapidapi-key': apiKey,
-          'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com'
+      const targetCount = 200;
+      let allStubs: any[] = [];
+      let offset = 0;
+      let hasMore = true;
+
+      while (allStubs.length < targetCount && hasMore) {
+        let url = `https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises?limit=25&offset=${offset}`;
+        if (category !== 'Todos' && catMap[category]) {
+          url = `https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises?bodyParts=${catMap[category]}&limit=25&offset=${offset}`;
         }
-      });
-      const res = await response.json();
-      if (res.data) {
-        setExercises(res.data.map(mapApiToExercise));
+
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'x-rapidapi-key': apiKey,
+            'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com'
+          }
+        });
+        const res = await response.json();
+        
+        if (res.data && res.data.length > 0) {
+          const pageStubs = res.data.map((apiEx: any) => ({
+            api_id: apiEx.exerciseId,
+            name: apiEx.name,
+            category: reverseMap[apiEx.bodyParts?.[0]] || category, // Map back to UI name or use current filter
+            equipment: apiEx.equipments?.[0] || 'Cualquiera',
+            image_url: apiEx.imageUrl,
+          }));
+          
+          allStubs = [...allStubs, ...pageStubs];
+          offset += res.data.length;
+          
+          // Stop if we got fewer than requested (end of results)
+          if (res.data.length < 25) hasMore = false;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      if (allStubs.length > 0) {
+        // Deduplicate locally before sending to Supabase to avoid 500 errors on batch conflicts
+        const uniqueStubs = Array.from(new Map(allStubs.filter(s => s.api_id).map(s => [s.api_id, s])).values());
+        
+        const { data: insertedData, error: upsertError } = await supabase
+          .from('exercises')
+          .upsert(uniqueStubs, { onConflict: 'api_id' })
+          .select();
+        
+        if (upsertError) {
+          console.error('Upsert Error:', upsertError);
+        }
+
+        if (insertedData) {
+          if (category === 'Todos') {
+            setExercises(insertedData.slice(0, 200));
+          } else {
+             setExercises(insertedData.filter(e => e.category === category).slice(0, 200));
+          }
+        }
       }
     } catch(e) {
       console.error('Failed API fetch', e);
     }
+    
     setLoading(false);
   };
 
   const handleExerciseClick = async (ex: Exercise) => {
     if (fetchingDetailsId) return;
+    
+    // Si ya tiene el video_url cacheado en la base de datos, lo abrimos inmediatamente (Cero demoras)
+    if (ex.video_url || !ex.api_id) {
+       setSelectedExercise(ex);
+       return;
+    }
+
     setFetchingDetailsId(ex.id);
     
-    // Fetch full detail to get video and instructions before opening sheet
+    // Fetch full detail to get video and instructions lazily
     const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
-    let fullDetails = ex;
+    let fullDetails = { ...ex };
     try {
-      const resp = await fetch(`https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises/${ex.id}`, {
+      const resp = await fetch(`https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises/${ex.api_id}`, {
         headers: { 'x-rapidapi-key': apiKey, 'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com' }
       });
       const data = await resp.json();
       if (data.data) {
-        fullDetails = mapApiToExercise(data.data);
+        const d = data.data;
+        fullDetails = {
+           ...ex,
+           video_url: d.videoUrl || null,
+           instructions: d.instructions || null,
+           tips: d.exerciseTips || null,
+        };
+
+        // Cache this specific full detail into Supabase for next time (Lazy update)
+        await supabase.from('exercises').update({
+           video_url: fullDetails.video_url,
+           instructions: fullDetails.instructions,
+           tips: fullDetails.tips
+        }).eq('id', ex.id);
+        
+        // Update local state list to avoid querying again if closed and reopened
+        setExercises(prev => prev.map(p => p.id === ex.id ? fullDetails : p));
       }
     } catch(e) {
-      console.error(e);
+       console.error(e);
     } finally {
       setFetchingDetailsId(null);
       setSelectedExercise(fullDetails);
-    }
-  };
-
-  const getOrUpsertExercise = async (selectedEx: Exercise) => {
-    if (!selectedEx.id.startsWith('exr_')) {
-      onSelect(selectedEx);
-      return;
-    }
-    
-    const { data: inserted, error } = await supabase.from('exercises').insert({
-      name: selectedEx.name,
-      category: selectedEx.category,
-      equipment: selectedEx.equipment,
-      image_url: selectedEx.image_url,
-      video_url: selectedEx.video_url,
-      instructions: selectedEx.instructions,
-      tips: selectedEx.tips
-    }).select().single();
-
-    if (error) {
-      console.error(error);
-      onSelect({ ...selectedEx, id: crypto.randomUUID() });
-    } else {
-      onSelect(inserted);
     }
   };
 
@@ -137,7 +184,14 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
         {/* Header */}
         <div className="pt-12 pb-4 px-4 bg-gradient-to-b from-black/80 to-transparent z-10 flex items-center justify-between border-b border-white/5">
           <div>
-            <h1 className="text-xl font-black italic uppercase tracking-tighter">Marketplace</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-black italic uppercase tracking-tighter">Marketplace</h1>
+              {!loading && exercises.length > 0 && (
+                <span className="bg-primary/20 text-primary text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse">
+                  {exercises.length}
+                </span>
+              )}
+            </div>
             <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mt-1">
               {mode === 'add' ? 'Añadir a tu rutina' : 'Reemplazar ejercicio'}
             </p>
@@ -155,9 +209,12 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`shrink-0 px-4 py-2 rounded-xl text-[10px] uppercase font-black tracking-widest transition-all ${activeCategory === cat ? 'bg-primary text-black shadow-[0_0_15px_rgba(0,242,255,0.2)]' : 'bg-white/5 text-white/40 border border-white/5 hover:text-white'}`}
+                className={`shrink-0 px-4 py-2 rounded-xl text-[10px] uppercase font-black tracking-widest transition-all flex items-center gap-1.5 ${activeCategory === cat ? 'bg-primary text-black shadow-[0_0_15px_rgba(0,242,255,0.2)]' : 'bg-white/5 text-white/40 border border-white/5 hover:text-white'}`}
               >
                 {cat}
+                {activeCategory === cat && !loading && (
+                   <span className="opacity-60 text-[8px]">({exercises.length})</span>
+                )}
               </button>
             ))}
           </div>
@@ -231,7 +288,7 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
         onClose={() => setSelectedExercise(null)}
         mode={mode}
         onAction={(ex) => {
-           getOrUpsertExercise(ex);
+           onSelect(ex); // Since everything flows through DB, UUID is guaranteed
            onClose(); 
         }}
       />

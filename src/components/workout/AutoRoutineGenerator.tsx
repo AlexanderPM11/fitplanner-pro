@@ -19,6 +19,7 @@ const MUSCLE_GROUPS = [
   { id: 'Brazos', name: 'Brazos', query: 'arms', icon: '💪' },
   { id: 'Glúteos', name: 'Glúteos', query: 'glute', icon: '🍑' },
   { id: 'Core', name: 'Core', query: 'abs', icon: '🧘' },
+  { id: 'Abdomen', name: 'Abdomen', query: 'waist', icon: '🍫' },
 ];
 
 const AutoRoutineGenerator: React.FC<AutoRoutineGeneratorProps> = ({ onGenerated, onClose }) => {
