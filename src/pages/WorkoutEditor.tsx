@@ -4,7 +4,7 @@ import { supabase } from '../api/supabase';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { Plus, Trash2, Check, ArrowLeft, Save, Dumbbell, Loader2, Timer, ChevronDown, Info, Lightbulb, Activity, TimerOff, GripVertical } from 'lucide-react';
 import type { Exercise } from '../types';
-import ExercisePicker from '../components/workout/ExercisePicker';
+import ExerciseMarketplace from '../components/marketplace/ExerciseMarketplace';
 import AutoRoutineGenerator from '../components/workout/AutoRoutineGenerator';
 import MediaModal from '../components/shared/MediaModal';
 import ConfirmationModal from '../components/shared/ConfirmationModal';
@@ -25,7 +25,8 @@ const WorkoutEditor = () => {
   const navigate = useNavigate();
   const [name, setName] = useState('Nuevo Entrenamiento');
   const [exercises, setExercises] = useState<WorkoutExerciseState[]>([]);
-  const [showPicker, setShowPicker] = useState(false);
+  const [marketMode, setMarketMode] = useState<'add' | 'replace' | null>(null);
+  const [replaceExId, setReplaceExId] = useState<string | null>(null);
   const [showAutoGenerator, setShowAutoGenerator] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -148,7 +149,21 @@ const WorkoutEditor = () => {
       exercise,
       sets: [{ weight: '', reps: '', completed: false }]
     }]);
-    setShowPicker(false);
+  };
+
+  const handleMarketSelect = (exercise: Exercise) => {
+    if (marketMode === 'replace' && replaceExId) {
+      setExercises(exercises.map(ex => {
+        if (ex.id === replaceExId) {
+           return { ...ex, exercise };
+        }
+        return ex;
+      }));
+    } else {
+      addExercise(exercise);
+    }
+    setMarketMode(null);
+    setReplaceExId(null);
   };
 
   const removeExercise = (id: string) => {
@@ -452,6 +467,17 @@ const WorkoutEditor = () => {
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
+                            setReplaceExId(ex.id);
+                            setMarketMode('replace');
+                          }} 
+                          className="p-2 text-white/10 hover:text-primary transition-colors"
+                          title="Reemplazar ejercicio"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
                             removeExercise(ex.id);
                           }} 
                           className="p-2 text-white/10 hover:text-red-400 transition-colors"
@@ -688,7 +714,7 @@ const WorkoutEditor = () => {
           </AnimatePresence>
             <div className="flex gap-3">
               <button
-                onClick={() => setShowPicker(true)}
+                onClick={() => setMarketMode('add')}
                 className="flex-1 glass-card p-4 flex items-center justify-center space-x-2 border-primary/20 hover:border-primary/50 transition-all text-primary"
               >
                 <Plus size={20} />
@@ -707,10 +733,12 @@ const WorkoutEditor = () => {
       }
 
       <AnimatePresence>
-        {showPicker && (
-          <ExercisePicker 
-            onSelect={addExercise}
-            onClose={() => setShowPicker(false)}
+        {marketMode !== null && (
+          <ExerciseMarketplace 
+            mode={marketMode}
+            onSelect={handleMarketSelect}
+            onClose={() => setMarketMode(null)}
+            isOpen={marketMode !== null}
           />
         )}
         {showAutoGenerator && (

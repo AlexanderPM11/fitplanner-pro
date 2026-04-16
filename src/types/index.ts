@@ -18,6 +18,9 @@ export interface Exercise {
   difficulty?: string | null;
   male_activation_url?: string | null;
   female_activation_url?: string | null;
+  equipment?: string | null;
+  movement_type?: string | null;
+  is_favorite?: boolean;
 }
 
 export interface Workout {

@@ -40,6 +40,7 @@ body {
 /* Custom scrollbar for a premium feel */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 3px;
 }
 
 ::-webkit-scrollbar-track {
