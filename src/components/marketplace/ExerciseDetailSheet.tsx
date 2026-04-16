@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Heart, Activity, Info, Play, Pause } from 'lucide-react';
+import { X, Check, Heart, Activity, Info } from 'lucide-react';
 import type { Exercise } from '../../types';
 import { supabase } from '../../api/supabase';
 import { useNotification } from '../../context/NotificationContext';

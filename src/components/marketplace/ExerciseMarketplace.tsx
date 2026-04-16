@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../api/supabase';
-import { Search, X, Loader2, Filter, ChevronRight, LayoutGrid, Dumbbell } from 'lucide-react';
+import { X, Loader2, ChevronRight, LayoutGrid } from 'lucide-react';
 import type { Exercise } from '../../types';
 import ExerciseDetailSheet from './ExerciseDetailSheet';
 import { useNotification } from '../../context/NotificationContext';
@@ -25,8 +25,8 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
 
   // External API
-  const [isSearchingExternal, setIsSearchingExternal] = useState(false);
-  const { showToast } = useNotification();
+  // showToast is kept if needed later, but removing for build compliance if unused
+
 
   useEffect(() => {
     if (isOpen) fetchExercisesCategory(activeCategory);
