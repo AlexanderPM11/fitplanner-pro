@@ -4,7 +4,26 @@ import { X, Loader2, ChevronRight, LayoutGrid } from 'lucide-react';
 import type { Exercise } from '../../types';
 import ExerciseDetailSheet from './ExerciseDetailSheet';
 
-const CATEGORIES = ['Todos', 'Pecho', 'Espalda', 'Piernas', 'Hombros', 'Brazos', 'Glúteos', 'Abdomen', 'Core', 'Cardio', 'Full Body'];
+const SPANISH_CATEGORIES: Record<string, string> = {
+  'BACK': 'Espalda',
+  'CALVES': 'Pantorrillas',
+  'CHEST': 'Pecho',
+  'FOREARMS': 'Antebrazos',
+  'HIPS': 'Caderas',
+  'NECK': 'Cuello',
+  'SHOULDERS': 'Hombros',
+  'THIGHS': 'Muslos',
+  'WAIST': 'Abdomen',
+  'HANDS': 'Manos',
+  'FEET': 'Pies',
+  'FACE': 'Cara',
+  'FULL BODY': 'Cuerpo Completo',
+  'BICEPS': 'Bíceps',
+  'UPPER ARMS': 'Brazos',
+  'TRICEPS': 'Tríceps',
+  'HAMSTRINGS': 'Isquiotibiales',
+  'QUADRICEPS': 'Cuádriceps'
+};
 
 interface ExerciseMarketplaceProps {
   isOpen: boolean;
@@ -16,63 +35,63 @@ interface ExerciseMarketplaceProps {
 const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClose, onSelect, mode = 'add' }) => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const [categories, setCategories] = useState<string[]>(['Todos']);
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [fetchingDetailsId, setFetchingDetailsId] = useState<string | null>(null);
   
   // Details Sheet
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
 
-  // External API
-  // showToast is kept if needed later, but removing for build compliance if unused
-
+  useEffect(() => {
+    if (isOpen) {
+      fetchCategories();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) fetchExercisesCategory(activeCategory);
   }, [isOpen, activeCategory]);
 
+  const fetchCategories = async () => {
+    const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
+    try {
+      const resp = await fetch('https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/bodyparts', {
+        headers: { 'x-rapidapi-key': apiKey, 'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com' }
+      });
+      const data = await resp.json();
+      if (data.data) {
+        const apiCats = data.data.map((c: any) => c.name);
+        setCategories(['Todos', ...apiCats]);
+      }
+    } catch (e) {
+      console.error('Error fetching categories', e);
+      // Fallback a categorías básicas si falla el API
+      setCategories(['Todos', 'CHEST', 'BACK', 'SHOULDERS', 'UPPER ARMS', 'WAIST', 'QUADRICEPS']);
+    }
+  };
+
   const fetchExercisesCategory = async (category: string) => {
     setLoading(true);
-    setExercises([]); // Reset state immediately to avoid showing stale results
+    setExercises([]); 
     
-    // Mapeo extendido para cubrir todas las posibilidades del API
-    const catMap: Record<string, string[]> = {
-      'Pecho': ['chest'],
-      'Espalda': ['back', 'upper back', 'lower back'],
-      'Piernas': ['upper legs', 'lower legs', 'quads', 'hamstrings', 'calves', 'glutes', 'hips'],
-      'Hombros': ['shoulders'],
-      'Brazos': ['upper arms', 'lower arms', 'biceps', 'triceps', 'forearms'],
-      'Glúteos': ['glutes', 'hips'],
-      'Abdomen': ['waist', 'upper abs', 'lower abs', 'abs'],
-      'Core': ['abs', 'obliques'],
-      'Cardio': ['cardio'],
-      'Full Body': ['full body', 'cardio']
-    };
-
     const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
     if (!apiKey) {
       setLoading(false);
       return;
     }
 
-    // Invertimos el mapa para el mapeo de vuelta (muchos a uno)
-    const reverseMap: Record<string, string> = {};
-    Object.entries(catMap).forEach(([spanish, apiTerms]) => {
-      apiTerms.forEach(term => {
-        reverseMap[term.toLowerCase()] = spanish;
-      });
-    });
-
     try {
       // 1. Intentar cargar desde el caché local (Supabase)
-      let query = supabase.from('exercises').select('*').limit(200);
+      let query = supabase.from('exercises').select('*').limit(300);
       if (category !== 'Todos') {
         query = query.eq('category', category);
       }
       
       const { data: localData } = await query.order('name');
       
-      if (localData && localData.length > 0) {
+      // Solo usamos el cache si tenemos una cantidad significativa (ej. > 100)
+      // O si es una categoría que sabemos que es pequeña (esto es un compromiso)
+      if (localData && localData.length >= 100) {
         setExercises(localData);
         setLoading(false);
         return;
@@ -83,72 +102,46 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
       let offset = 0;
       let hasMore = true;
 
-      // Si es una categoría específica, obtenemos los términos del mapa
-      const searchTerms = (category === 'Todos') ? [null] : (catMap[category] || [category]);
-
       while (allStubs.length < targetCount && hasMore) {
-        // Para simplificar, si hay múltiples términos, los buscamos uno por uno o usamos el primero
-        // Aquí usaremos el primer término para la búsqueda principal si hay muchos, 
-        // o repetiremos el bucle si necesitamos más.
-        for (const term of searchTerms) {
-          let url = `https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises?limit=30&offset=${offset}`;
-          if (term) {
-            url += `&bodyParts=${term}`;
-          }
-
-          const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-              'x-rapidapi-key': apiKey,
-              'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com'
-            }
-          });
-          const res = await response.json();
-          
-          if (res.data && res.data.length > 0) {
-            const pageStubs = res.data.map((apiEx: any) => {
-              const apiBodyPart = apiEx.bodyParts?.[0]?.toLowerCase();
-              let mappedCategory = reverseMap[apiBodyPart];
-              
-              if (!mappedCategory && category !== 'Todos') {
-                mappedCategory = category;
-              }
-              
-              if (!mappedCategory) {
-                mappedCategory = apiEx.bodyParts?.[0] ? 
-                  (apiEx.bodyParts[0].charAt(0).toUpperCase() + apiEx.bodyParts[0].slice(1)) : 
-                  'Otros';
-              }
-
-              return {
-                api_id: apiEx.exerciseId,
-                name: apiEx.name,
-                category: mappedCategory,
-                equipment: apiEx.equipments?.[0] || 'Cualquiera',
-                image_url: apiEx.imageUrl,
-              };
-            });
-            
-            allStubs = [...allStubs, ...pageStubs];
-          }
+        let url = `https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises?limit=40&offset=${offset}`;
+        if (category !== 'Todos') {
+          url += `&bodyParts=${category}`;
         }
+
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'x-rapidapi-key': apiKey,
+            'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com'
+          }
+        });
+        const res = await response.json();
         
-        offset += 30;
-        if (allStubs.length >= targetCount || offset > 100) hasMore = false;
+        if (res.data && res.data.length > 0) {
+          const pageStubs = res.data.map((apiEx: any) => ({
+            api_id: apiEx.exerciseId,
+            name: apiEx.name,
+            category: apiEx.bodyParts?.[0] || category, 
+            equipment: apiEx.equipments?.[0] || 'Cualquiera',
+            image_url: apiEx.imageUrl,
+          }));
+          
+          allStubs = [...allStubs, ...pageStubs];
+          offset += res.data.length;
+          if (res.data.length < 40) hasMore = false;
+        } else {
+          hasMore = false;
+        }
       }
       
       if (allStubs.length > 0) {
         const uniqueStubs = Array.from(new Map(allStubs.filter(s => s.api_id).map(s => [s.api_id, s])).values());
         
-        const { data: insertedData, error: upsertError } = await supabase
+        const { data: insertedData } = await supabase
           .from('exercises')
           .upsert(uniqueStubs, { onConflict: 'api_id' })
           .select();
         
-        if (upsertError) {
-          console.error('Upsert Error:', upsertError);
-        }
-
         if (insertedData) {
           if (category === 'Todos') {
             setExercises(insertedData.slice(0, 200));
@@ -239,18 +232,21 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
         <div className="px-4 py-4 z-10 space-y-3 border-b border-white/5">
           {/* Categories */}
           <div className="flex space-x-2 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`shrink-0 px-4 py-2 rounded-xl text-[10px] uppercase font-black tracking-widest transition-all flex items-center gap-1.5 ${activeCategory === cat ? 'bg-primary text-black shadow-[0_0_15px_rgba(0,242,255,0.2)]' : 'bg-white/5 text-white/40 border border-white/5 hover:text-white'}`}
-              >
-                {cat}
-                {activeCategory === cat && !loading && (
-                   <span className="opacity-60 text-[8px]">({exercises.length})</span>
-                )}
-              </button>
-            ))}
+            {categories.map(cat => {
+              const displayName = SPANISH_CATEGORIES[cat] || (cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase());
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`shrink-0 px-4 py-2 rounded-xl text-[10px] uppercase font-black tracking-widest transition-all flex items-center gap-1.5 ${activeCategory === cat ? 'bg-primary text-black shadow-[0_0_15px_rgba(0,242,255,0.2)]' : 'bg-white/5 text-white/40 border border-white/5 hover:text-white'}`}
+                >
+                  {displayName}
+                  {activeCategory === cat && !loading && (
+                     <span className="opacity-60 text-[8px]">({exercises.length})</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -292,7 +288,9 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-bold text-white truncate">{ex.name}</h3>
                   <div className="flex gap-2 items-center mt-1">
-                    <span className="text-[9px] uppercase text-primary tracking-widest font-bold">{ex.category}</span>
+                    <span className="text-[9px] uppercase text-primary tracking-widest font-bold">
+                      {SPANISH_CATEGORIES[ex.category] || ex.category}
+                    </span>
                     {ex.equipment && (
                       <>
                         <span className="w-1 h-1 rounded-full bg-white/20" />
