@@ -33,10 +33,20 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
 
   const fetchExercisesCategory = async (category: string) => {
     setLoading(true);
+    setExercises([]); // Reset state immediately to avoid showing stale results
     
-    const catMap: Record<string, string> = {
-      'Pecho': 'chest', 'Espalda': 'back', 'Piernas': 'legs', 'Hombros': 'shoulders', 
-      'Brazos': 'arms', 'Glúteos': 'glute', 'Abdomen': 'waist', 'Core': 'abs', 'Cardio': 'cardio', 'Full Body': 'full body'
+    // Mapeo extendido para cubrir todas las posibilidades del API
+    const catMap: Record<string, string[]> = {
+      'Pecho': ['chest'],
+      'Espalda': ['back', 'upper back', 'lower back'],
+      'Piernas': ['upper legs', 'lower legs', 'quads', 'hamstrings', 'calves', 'glutes', 'hips'],
+      'Hombros': ['shoulders'],
+      'Brazos': ['upper arms', 'lower arms', 'biceps', 'triceps', 'forearms'],
+      'Glúteos': ['glutes', 'hips'],
+      'Abdomen': ['waist', 'upper abs', 'lower abs', 'abs'],
+      'Core': ['abs', 'obliques'],
+      'Cardio': ['cardio'],
+      'Full Body': ['full body', 'cardio']
     };
 
     const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
@@ -45,7 +55,13 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
       return;
     }
 
-    const reverseMap: Record<string, string> = Object.entries(catMap).reduce((acc: any, [k, v]) => ({ ...acc, [v]: k }), {});
+    // Invertimos el mapa para el mapeo de vuelta (muchos a uno)
+    const reverseMap: Record<string, string> = {};
+    Object.entries(catMap).forEach(([spanish, apiTerms]) => {
+      apiTerms.forEach(term => {
+        reverseMap[term.toLowerCase()] = spanish;
+      });
+    });
 
     try {
       // 1. Intentar cargar desde el caché local (Supabase)
@@ -67,42 +83,61 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
       let offset = 0;
       let hasMore = true;
 
-      while (allStubs.length < targetCount && hasMore) {
-        let url = `https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises?limit=25&offset=${offset}`;
-        if (category !== 'Todos' && catMap[category]) {
-          url = `https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises?bodyParts=${catMap[category]}&limit=25&offset=${offset}`;
-        }
+      // Si es una categoría específica, obtenemos los términos del mapa
+      const searchTerms = (category === 'Todos') ? [null] : (catMap[category] || [category]);
 
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'x-rapidapi-key': apiKey,
-            'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com'
+      while (allStubs.length < targetCount && hasMore) {
+        // Para simplificar, si hay múltiples términos, los buscamos uno por uno o usamos el primero
+        // Aquí usaremos el primer término para la búsqueda principal si hay muchos, 
+        // o repetiremos el bucle si necesitamos más.
+        for (const term of searchTerms) {
+          let url = `https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises?limit=30&offset=${offset}`;
+          if (term) {
+            url += `&bodyParts=${term}`;
           }
-        });
-        const res = await response.json();
-        
-        if (res.data && res.data.length > 0) {
-          const pageStubs = res.data.map((apiEx: any) => ({
-            api_id: apiEx.exerciseId,
-            name: apiEx.name,
-            category: reverseMap[apiEx.bodyParts?.[0]] || category, // Map back to UI name or use current filter
-            equipment: apiEx.equipments?.[0] || 'Cualquiera',
-            image_url: apiEx.imageUrl,
-          }));
+
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'x-rapidapi-key': apiKey,
+              'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com'
+            }
+          });
+          const res = await response.json();
           
-          allStubs = [...allStubs, ...pageStubs];
-          offset += res.data.length;
-          
-          // Stop if we got fewer than requested (end of results)
-          if (res.data.length < 25) hasMore = false;
-        } else {
-          hasMore = false;
+          if (res.data && res.data.length > 0) {
+            const pageStubs = res.data.map((apiEx: any) => {
+              const apiBodyPart = apiEx.bodyParts?.[0]?.toLowerCase();
+              let mappedCategory = reverseMap[apiBodyPart];
+              
+              if (!mappedCategory && category !== 'Todos') {
+                mappedCategory = category;
+              }
+              
+              if (!mappedCategory) {
+                mappedCategory = apiEx.bodyParts?.[0] ? 
+                  (apiEx.bodyParts[0].charAt(0).toUpperCase() + apiEx.bodyParts[0].slice(1)) : 
+                  'Otros';
+              }
+
+              return {
+                api_id: apiEx.exerciseId,
+                name: apiEx.name,
+                category: mappedCategory,
+                equipment: apiEx.equipments?.[0] || 'Cualquiera',
+                image_url: apiEx.imageUrl,
+              };
+            });
+            
+            allStubs = [...allStubs, ...pageStubs];
+          }
         }
+        
+        offset += 30;
+        if (allStubs.length >= targetCount || offset > 100) hasMore = false;
       }
       
       if (allStubs.length > 0) {
-        // Deduplicate locally before sending to Supabase to avoid 500 errors on batch conflicts
         const uniqueStubs = Array.from(new Map(allStubs.filter(s => s.api_id).map(s => [s.api_id, s])).values());
         
         const { data: insertedData, error: upsertError } = await supabase
