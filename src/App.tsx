@@ -9,7 +9,6 @@ import History from './pages/History';
 import ProfilePage from './pages/Profile';
 import Planner from './pages/Planner';
 import Routines from './pages/Routines';
-import { NotificationProvider } from './context/NotificationContext';
 import type { Session } from '@supabase/supabase-js';
 
 const App = () => {
@@ -44,7 +43,6 @@ const App = () => {
   }
 
   return (
-    <NotificationProvider>
       <Layout>
         <Routes>
           <Route path="/" element={<Dashboard />} />
@@ -56,7 +54,6 @@ const App = () => {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
-    </NotificationProvider>
   );
 };
 
