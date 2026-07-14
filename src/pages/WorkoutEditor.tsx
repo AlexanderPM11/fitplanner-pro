@@ -45,6 +45,56 @@ const WorkoutEditor = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useNotification();
 
+  // Request notifications permissions on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Restore timer state on mount
+  useEffect(() => {
+    const savedEnd = localStorage.getItem('workout_timer_end');
+    if (savedEnd) {
+      const end = parseInt(savedEnd, 10);
+      const now = Date.now();
+      const remaining = Math.round((end - now) / 1000);
+      if (remaining > 0) {
+        setTimeLeft(remaining);
+        setIsTimerActive(true);
+      } else {
+        localStorage.removeItem('workout_timer_end');
+        localStorage.removeItem('workout_timer_duration');
+      }
+    }
+  }, []);
+
+  // Tab Visibility Sync
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const savedEnd = localStorage.getItem('workout_timer_end');
+        if (savedEnd) {
+          const end = parseInt(savedEnd, 10);
+          const now = Date.now();
+          const remaining = Math.round((end - now) / 1000);
+          
+          if (remaining > 0) {
+            setTimeLeft(remaining);
+            setIsTimerActive(true);
+          } else {
+            setTimeLeft(null);
+            setIsTimerActive(false);
+            localStorage.removeItem('workout_timer_end');
+            localStorage.removeItem('workout_timer_duration');
+          }
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   const generateId = () => {
     return `ex_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   };
@@ -79,16 +129,31 @@ const WorkoutEditor = () => {
   // Timer Interval
   useEffect(() => {
     let interval: any;
-    if (isTimerActive && timeLeft !== null && timeLeft > 0) {
+    if (isTimerActive) {
       interval = setInterval(() => {
-        setTimeLeft(prev => (prev !== null && prev > 0) ? prev - 1 : 0);
+        const savedEnd = localStorage.getItem('workout_timer_end');
+        if (savedEnd) {
+          const end = parseInt(savedEnd, 10);
+          const now = Date.now();
+          const remaining = Math.round((end - now) / 1000);
+          
+          if (remaining <= 0) {
+            setTimeLeft(0);
+            setIsTimerActive(false);
+            localStorage.removeItem('workout_timer_end');
+            localStorage.removeItem('workout_timer_duration');
+            playTimerEndSound();
+          } else {
+            setTimeLeft(remaining);
+          }
+        } else {
+          setIsTimerActive(false);
+          setTimeLeft(null);
+        }
       }, 1000);
-    } else if (timeLeft === 0) {
-      setIsTimerActive(false);
-      playTimerEndSound();
     }
     return () => clearInterval(interval);
-  }, [isTimerActive, timeLeft]);
+  }, [isTimerActive]);
 
   const playTimerEndSound = () => {
     try {
@@ -230,18 +295,60 @@ const WorkoutEditor = () => {
   };
 
   const startTimer = (seconds = timerDuration) => {
+    const endTime = Date.now() + seconds * 1000;
+    localStorage.setItem('workout_timer_end', endTime.toString());
+    localStorage.setItem('workout_timer_duration', seconds.toString());
+    
     setTimeLeft(seconds);
     setIsTimerActive(true);
+
+    // Notificar al Service Worker para iniciar temporizador en segundo plano
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'START_TIMER',
+        duration: seconds
+      });
+    }
   };
 
   const stopTimer = () => {
     setIsTimerActive(false);
     setTimeLeft(null);
+    localStorage.removeItem('workout_timer_end');
+    localStorage.removeItem('workout_timer_duration');
+
+    // Notificar al Service Worker para cancelar temporizador en segundo plano
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'CANCEL_TIMER'
+      });
+    }
   };
 
   const adjustTimer = (seconds: number) => {
-    setTimeLeft(prev => (prev !== null ? Math.max(0, prev + seconds) : seconds));
+    const savedEnd = localStorage.getItem('workout_timer_end');
+    let newTimeLeft = seconds;
+    
+    if (savedEnd) {
+      const end = parseInt(savedEnd, 10);
+      const remaining = Math.round((end - Date.now()) / 1000);
+      newTimeLeft = Math.max(0, remaining + seconds);
+    }
+    
+    const newEndTime = Date.now() + newTimeLeft * 1000;
+    localStorage.setItem('workout_timer_end', newEndTime.toString());
+    localStorage.setItem('workout_timer_duration', newTimeLeft.toString());
+    
+    setTimeLeft(newTimeLeft);
     if (!isTimerActive) setIsTimerActive(true);
+
+    // Notificar al Service Worker con el nuevo tiempo ajustado
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'START_TIMER',
+        duration: newTimeLeft
+      });
+    }
   };
 
   const saveWorkout = async () => {
