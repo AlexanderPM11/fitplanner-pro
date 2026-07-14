@@ -11,6 +11,12 @@ const ReloadPrompt: React.FC = () => {
   } = useRegisterSW({
     onRegistered(r) {
       console.log('SW Registered: ', r);
+      if (r) {
+        r.update();
+        setInterval(() => {
+          r.update();
+        }, 5 * 60 * 1000); // Check every 5 minutes
+      }
     },
     onRegisterError(error) {
       console.log('SW registration error: ', error);
