@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
 import { motion } from 'framer-motion';
-import { Calendar, Dumbbell, Trash2, Edit2, Bookmark, Clock, Activity } from 'lucide-react';
+import { Calendar, Dumbbell, Trash2, Edit2, Bookmark, Clock, Activity, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Workout } from '../types';
 import { Helmet } from 'react-helmet-async';
 import { useNotification } from '../context/NotificationContext';
 import MediaModal from '../components/shared/MediaModal';
+import Analytics from './Analytics';
 
 interface HistoryWorkout extends Workout {
 
@@ -22,7 +23,7 @@ const History = () => {
   const navigate = useNavigate();
   const [workouts, setWorkouts] = useState<HistoryWorkout[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'sessions' | 'routines'>('sessions');
+  const [activeTab, setActiveTab] = useState<'sessions' | 'routines' | 'analytics'>('sessions');
   const [fsMedia, setFsMedia] = useState<{ url: string; title: string } | null>(null);
   const { showToast, confirm } = useNotification();
 
@@ -85,31 +86,40 @@ const History = () => {
         <title>Historial | FitPlanner Pro</title>
         <meta name="description" content="Revisa tu historial de entrenamientos y analiza tu consistencia a lo largo del tiempo." />
       </Helmet>
-      <header className="flex justify-between items-end">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Management</h2>
-          <h1 className="text-3xl font-black tracking-tight italic uppercase">Workouts</h1>
+          <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Historial y Biblioteca</h2>
+          <h1 className="text-3xl font-black tracking-tight italic uppercase">Entrenamientos</h1>
         </div>
-        <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+        <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 w-full sm:w-auto overflow-x-auto">
           <button 
             onClick={() => setActiveTab('sessions')}
-            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center space-x-2 ${activeTab === 'sessions' ? 'bg-primary text-black' : 'text-white/30 hover:text-white/50'}`}
+            className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center justify-center space-x-1.5 ${activeTab === 'sessions' ? 'bg-primary text-black' : 'text-white/30 hover:text-white/50'}`}
           >
             <Clock size={12} />
-            <span>Log</span>
+            <span>Historial</span>
           </button>
           <button 
             onClick={() => setActiveTab('routines')}
-            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center space-x-2 ${activeTab === 'routines' ? 'bg-primary text-black' : 'text-white/30 hover:text-white/50'}`}
+            className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center justify-center space-x-1.5 ${activeTab === 'routines' ? 'bg-primary text-black' : 'text-white/30 hover:text-white/50'}`}
           >
             <Bookmark size={12} />
-            <span>Library</span>
+            <span>Librería</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('analytics')}
+            className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center justify-center space-x-1.5 ${activeTab === 'analytics' ? 'bg-primary text-black' : 'text-white/30 hover:text-white/50'}`}
+          >
+            <TrendingUp size={12} />
+            <span>Métricas</span>
           </button>
         </div>
       </header>
 
       {loading ? (
         <div className="py-20 text-center text-white/20 font-bold animate-pulse uppercase italic">Scanning Archives...</div>
+      ) : activeTab === 'analytics' ? (
+        <Analytics hideHeader={true} />
       ) : workouts.filter(w => activeTab === 'routines' ? w.is_template : !w.is_template).length > 0 ? (
         <div className="space-y-4">
           {workouts
