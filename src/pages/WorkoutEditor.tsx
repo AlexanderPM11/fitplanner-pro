@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../api/supabase';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { Plus, Trash2, Check, ArrowLeft, Save, Dumbbell, Loader2, Timer, ChevronDown, Info, Lightbulb, Activity, TimerOff, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Check, ArrowLeft, Save, Dumbbell, Loader2, Timer, ChevronDown, TimerOff, GripVertical } from 'lucide-react';
 import type { Exercise } from '../types';
 import ExerciseMarketplace from '../components/marketplace/ExerciseMarketplace';
 import AutoRoutineGenerator from '../components/workout/AutoRoutineGenerator';
@@ -428,64 +428,71 @@ const WorkoutEditor = () => {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="glass-card flex"
+                  className="glass-card flex flex-col overflow-hidden border border-white/[0.08] shadow-[0_8px_30px_rgb(0,0,0,0.3)] bg-gradient-to-br from-white/[0.03] to-transparent hover:border-white/20 transition-all duration-300 rounded-3xl w-full"
                 >
-                  {/* Grip Handle */}
-                  <div className="w-10 flex items-center justify-center bg-white/5 cursor-grab active:cursor-grabbing text-white/10 hover:text-primary/50 transition-colors border-r border-white/5">
-                    <GripVertical size={20} />
-                  </div>
-
                   <div className="flex-1 flex flex-col min-w-0">
                     <div 
-                      className="p-4 bg-white/5 flex justify-between items-center cursor-pointer hover:bg-white/10 transition-colors"
+                      className="p-5 flex justify-between items-center cursor-pointer hover:bg-white/[0.02] transition-all duration-200"
                       onClick={() => {
                         setExpandedEx(expandedEx === ex.id ? null : ex.id);
                       }}
                     >
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                        {/* Grip Handle / Drag trigger - Styled beautifully inside the card header */}
+                        <div 
+                          className="text-white/20 hover:text-primary transition-colors cursor-grab active:cursor-grabbing p-1.5 -ml-2 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <GripVertical size={20} />
+                        </div>
+
                         {ex.exercise.video_url || ex.exercise.image_url ? (
-                          <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-white/5 border border-white/10 relative group/media">
+                          <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0 bg-black/40 border border-white/10 relative group/media shadow-md">
                             {ex.exercise.video_url ? (
                               <video src={ex.exercise.video_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
                             ) : ex.exercise.image_url?.includes('.mp4') || ex.exercise.image_url?.includes('.webm') ? (
                               <video src={ex.exercise.image_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
                             ) : (
-                              <img src={ex.exercise.image_url!} alt={ex.exercise.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                              <img src={ex.exercise.image_url!} alt={ex.exercise.name} className="w-full h-full object-cover group-hover/media:scale-110 transition-transform duration-300" />
                             )}
                           </div>
                         ) : (
-                          <div className="w-14 h-14 rounded-xl shrink-0 bg-white/5 border border-white/10 flex items-center justify-center text-white/10">
-                            <Dumbbell size={20} />
+                          <div className="w-16 h-16 rounded-2xl shrink-0 bg-white/5 border border-white/10 flex items-center justify-center text-white/20">
+                            <Dumbbell size={24} />
                           </div>
                         )}
-                        <div className="max-w-[120px] sm:max-w-[200px]">
-                          <h3 className="font-black italic uppercase tracking-tight text-primary leading-tight truncate">{ex.exercise.name}</h3>
-                          <p className="text-[10px] text-white/30 uppercase font-bold">{ex.exercise.category}</p>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-black italic uppercase tracking-tight text-white group-hover:text-primary transition-colors text-base leading-tight truncate">{ex.exercise.name}</h3>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                            <span className="text-[10px] text-white/40 uppercase font-black tracking-widest">{ex.exercise.category}</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1">
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
                             setReplaceExId(ex.id);
                             setMarketMode('replace');
                           }} 
-                          className="p-2 text-white/10 hover:text-primary transition-colors"
+                          className="p-2.5 text-white/30 hover:text-primary hover:bg-white/5 rounded-xl transition-all duration-200"
                           title="Reemplazar ejercicio"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
                         </button>
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
                             removeExercise(ex.id);
                           }} 
-                          className="p-2 text-white/10 hover:text-red-400 transition-colors"
+                          className="p-2.5 text-white/30 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-200"
+                          title="Eliminar ejercicio"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={18} />
                         </button>
-                        <div className={`p-1 transition-transform duration-300 ${expandedEx === ex.id ? 'rotate-180' : ''}`}>
-                          <ChevronDown size={18} className="text-white/20" />
+                        <div className={`p-2 transition-transform duration-300 ${expandedEx === ex.id ? 'rotate-180 text-primary' : 'text-white/20'}`}>
+                          <ChevronDown size={20} />
                         </div>
                       </div>
                     </div>
@@ -497,77 +504,80 @@ const WorkoutEditor = () => {
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.3, ease: 'easeInOut' }}
-                          className="overflow-hidden"
+                          className="overflow-hidden bg-black/10 border-t border-white/[0.04]"
                         >
-                          {/* Large Media Preview */}
+                          {/* Beautiful Widescreen Image/Video Preview */}
                           {ex.exercise.image_url && (
-                            <div 
-                              className="aspect-video w-full relative flex items-center justify-center bg-black/20 cursor-expand hover:bg-black/30 transition-all group/expand border-y border-white/5"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setFsMedia({ 
-                                  url: ex.exercise.video_url || ex.exercise.image_url || '', 
-                                  title: ex.exercise.name 
-                                });
-                              }}
-                            >
-                              {/* Video detection */}
-                              {ex.exercise.video_url ? (
-                                <video 
-                                  src={ex.exercise.video_url} 
-                                  autoPlay 
-                                  loop 
-                                  muted 
-                                  playsInline 
-                                  controls
-                                  className="relative z-10 w-full h-full object-contain"
-                                />
-                              ) : (ex.exercise.image_url?.includes('.mp4') || 
-                                ex.exercise.image_url?.includes('.webm') || 
-                                ex.exercise.image_url?.includes('video') ||
-                                ex.exercise.image_url?.includes('giphy')) ? (
-                                <video 
-                                  src={ex.exercise.image_url} 
-                                  autoPlay 
-                                  loop 
-                                  muted 
-                                  playsInline 
-                                  controls
-                                  className="relative z-10 w-full h-full object-contain"
-                                />
-                              ) : (
-                                <img 
-                                  src={ex.exercise.image_url || ''} 
-                                  alt={ex.exercise.name} 
-                                  className="relative z-10 w-full h-full object-contain" 
-                                />
-                              )}
+                            <div className="px-5 pt-5 pb-2">
+                              <div 
+                                className="aspect-video w-full rounded-2xl overflow-hidden relative flex items-center justify-center bg-black/40 cursor-expand hover:opacity-90 transition-all group/expand border border-white/10 shadow-lg"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFsMedia({ 
+                                    url: ex.exercise.video_url || ex.exercise.image_url || '', 
+                                    title: ex.exercise.name 
+                                  });
+                                }}
+                              >
+                                {/* Video detection */}
+                                {ex.exercise.video_url ? (
+                                  <video 
+                                    src={ex.exercise.video_url} 
+                                    autoPlay 
+                                    loop 
+                                    muted 
+                                    playsInline 
+                                    controls
+                                    className="relative z-10 w-full h-full object-cover"
+                                  />
+                                ) : (ex.exercise.image_url?.includes('.mp4') || 
+                                  ex.exercise.image_url?.includes('.webm') || 
+                                  ex.exercise.image_url?.includes('video') ||
+                                  ex.exercise.image_url?.includes('giphy')) ? (
+                                  <video 
+                                    src={ex.exercise.image_url} 
+                                    autoPlay 
+                                    loop 
+                                    muted 
+                                    playsInline 
+                                    controls
+                                    className="relative z-10 w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <img 
+                                    src={ex.exercise.image_url || ''} 
+                                    alt={ex.exercise.name} 
+                                    className="relative z-10 w-full h-full object-cover" 
+                                  />
+                                )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none z-20" />
+                              </div>
                             </div>
                           )}
 
                           {/* Sets Section */}
-                          <div className="p-3 space-y-2 border-b border-white/5">
+                          <div className="p-5 space-y-3">
                             {/* Tiny Header */}
                             {ex.sets.length > 0 && (
-                              <div className="flex items-center gap-2 px-1.5 pb-1 text-[9px] uppercase font-black tracking-widest text-white/30">
-                                <div className="w-5 text-center">#</div>
+                              <div className="flex items-center gap-3 px-2 pb-1.5 text-[10px] uppercase font-black tracking-widest text-white/30 border-b border-white/[0.04]">
+                                <div className="w-6 text-center">#</div>
                                 <div className="flex-1 text-center">KG</div>
                                 <div className="flex-1 text-center">Reps</div>
-                                <div className="w-8 shrink-0"></div>
-                                <div className="w-8 shrink-0"></div>
+                                <div className="w-10 shrink-0"></div>
+                                <div className="w-10 shrink-0"></div>
                               </div>
                             )}
 
                             {ex.sets.map((set, setIdx) => (
-                              <div key={setIdx} className={`flex items-center gap-2 p-1.5 rounded-xl transition-colors ${set.completed ? 'bg-primary/10' : 'hover:bg-white/5'} ${setIdx % 2 !== 0 && !set.completed ? 'bg-white/[0.02]' : ''}`}>
-                                <div className="w-5 text-center text-[10px] font-bold text-white/40">{setIdx + 1}</div>
+                              <div key={setIdx} className={`flex items-center gap-3 p-2 rounded-2xl transition-all duration-200 ${set.completed ? 'bg-primary/10 border border-primary/20' : 'bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04]'}`}>
+                                <div className="w-6 text-center text-xs font-black text-white/40">{setIdx + 1}</div>
                                 
                                 <div className="flex-1">
                                   <input 
                                     type="number"
                                     inputMode="decimal"
                                     placeholder="0"
-                                    className="w-full bg-black/40 border border-white/5 rounded-lg py-1.5 px-1 text-center text-xs font-bold outline-none focus:border-primary/50 transition-all text-white placeholder-white/20"
+                                    className="w-full bg-black/60 border border-white/10 rounded-xl py-2 px-1 text-center text-sm font-black outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all text-white placeholder-white/10"
                                     value={set.weight || ''}
                                     onChange={(e) => updateSet(ex.id, setIdx, 'weight', e.target.value)}
                                   />
@@ -578,7 +588,7 @@ const WorkoutEditor = () => {
                                     type="number"
                                     inputMode="numeric"
                                     placeholder="0"
-                                    className="w-full bg-black/40 border border-white/5 rounded-lg py-1.5 px-1 text-center text-xs font-bold outline-none focus:border-primary/50 transition-all text-white placeholder-white/20"
+                                    className="w-full bg-black/60 border border-white/10 rounded-xl py-2 px-1 text-center text-sm font-black outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all text-white placeholder-white/10"
                                     value={set.reps || ''}
                                     onChange={(e) => updateSet(ex.id, setIdx, 'reps', e.target.value)}
                                   />
@@ -586,124 +596,28 @@ const WorkoutEditor = () => {
 
                                 <button 
                                   onClick={() => removeSet(ex.id, setIdx)}
-                                  className="w-8 h-8 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-400/10 flex items-center justify-center transition-all shrink-0"
+                                  className="w-10 h-10 rounded-xl text-white/30 hover:text-red-400 hover:bg-red-400/10 flex items-center justify-center transition-all shrink-0"
+                                  title="Eliminar serie"
                                 >
-                                  <Trash2 size={14} />
+                                  <Trash2 size={16} />
                                 </button>
                                 <button 
                                   onClick={() => toggleSetComplete(ex.id, setIdx)}
-                                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all shrink-0 ${set.completed ? 'bg-primary text-black shadow-[0_0_10px_rgba(0,242,255,0.3)]' : 'bg-black/40 border border-white/5 text-white/30 hover:text-primary hover:border-primary/30'}`}
+                                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 ${set.completed ? 'bg-primary text-black shadow-[0_0_15px_rgba(0,242,255,0.4)] scale-105' : 'bg-black/60 border border-white/10 text-white/30 hover:text-primary hover:border-primary/30'}`}
+                                  title={set.completed ? "Serie completada" : "Completar serie"}
                                 >
-                                  <Check size={14} />
+                                  <Check size={16} className="stroke-[3]" />
                                 </button>
                               </div>
                             ))}
 
                             <button 
                               onClick={() => addSet(ex.id)}
-                              className="w-full py-2 flex justify-center items-center gap-2 border border-white/10 border-dashed rounded-xl text-[10px] font-bold uppercase tracking-widest text-white/40 hover:bg-white/5 hover:border-primary/30 hover:text-primary transition-all mt-2"
+                              className="w-full py-3 flex justify-center items-center gap-2 border border-dashed border-white/10 hover:border-primary/30 rounded-2xl text-xs font-black uppercase tracking-widest text-white/40 hover:bg-primary/5 hover:text-primary transition-all mt-3"
                             >
-                              <span className="text-sm leading-none">+</span> Añadir Serie
+                              <span className="text-base leading-none">+</span> Añadir Serie
                             </button>
                           </div>
-
-                          {/* Athlete Timeline Design (Premium Overhaul) */}
-                          {(ex.exercise.instructions || ex.exercise.tips || ex.exercise.male_activation_url) && (
-                            <div className="p-6 bg-gradient-to-br from-white/[0.04] to-transparent border-b border-white/5 space-y-8">
-                              
-                              <div className="flex flex-col xl:flex-row gap-8 items-start">
-                                {/* Muscle Map Section (Only renders if URLs exist) */}
-                                {(ex.exercise.male_activation_url || ex.exercise.female_activation_url) && (
-                                  <div className="w-full xl:w-[320px] shrink-0 group/section">
-                                    <div className="flex items-center space-x-2 text-primary mb-4">
-                                      <div className="p-2 bg-primary/10 rounded-xl border border-primary/20">
-                                        <Activity size={16} />
-                                      </div>
-                                      <span className="text-[11px] font-black uppercase tracking-[0.25em] italic">Análisis Biométrico</span>
-                                    </div>
-                                    
-                                    <div className="aspect-video xl:aspect-square w-full rounded-[2.5rem] bg-black/60 border border-white/10 overflow-hidden relative group/muscle shadow-2xl transition-all duration-700 hover:border-primary/40 hover:shadow-primary/5">
-                                      <img 
-                                        src={ex.exercise.gender === 'female' ? ex.exercise.female_activation_url! : ex.exercise.male_activation_url!} 
-                                        className="w-full h-full object-contain p-4 group-hover/muscle:scale-110 transition-transform duration-1000"
-                                        alt="Muscle activation map"
-                                      />
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-60 pointer-events-none" />
-                                      
-                                      {/* Difficulty Badge */}
-                                      <div className="absolute bottom-4 left-4 z-20">
-                                        <div className="px-3 py-1 bg-white/5 backdrop-blur-2xl rounded-full border border-white/10 inline-flex items-center space-x-2">
-                                          <div className="w-1 h-1 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(0,242,255,0.8)]" />
-                                          <span className="text-[10px] font-black text-white uppercase tracking-tighter italic">
-                                            {ex.exercise.difficulty || 'Frecuencia Óptima'}
-                                          </span>
-                                        </div>
-                                      </div>
-
-                                      {/* Scanning Lines */}
-                                      <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.01),rgba(0,255,0,0.01),rgba(0,0,255,0.01))] z-10 bg-[length:100%_4px,3px_100%] opacity-40 shrink-0" />
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Instructions List - VERTICAL TIMELINE */}
-                                <div className="w-full md:flex-1 group/section">
-                                  <div className="flex items-center space-x-2 text-white/40 mb-6">
-                                    <div className="p-2 bg-white/5 rounded-xl border border-white/5">
-                                      <Info size={16} />
-                                    </div>
-                                    <span className="text-[11px] font-black uppercase tracking-[0.25em] italic">Timeline de Ejecución</span>
-                                  </div>
-                                  
-                                  <div className="relative space-y-0 w-full px-2">
-                                    {/* Vertical Connector Line */}
-                                    <div className="absolute left-6 top-6 bottom-6 w-[2px] bg-gradient-to-b from-primary/40 via-white/10 to-transparent rounded-full z-0" />
-                                    
-                                    {ex.exercise.instructions ? (ex.exercise.instructions as string[]).map((step, idx) => (
-                                      <div key={idx} className="relative z-10 flex space-x-6 py-4 items-start group/step">
-                                        <div className="w-12 h-12 rounded-2xl bg-black border border-white/10 flex items-center justify-center shrink-0 shadow-lg group-hover/step:border-primary/50 transition-all duration-300 group-hover/step:scale-110">
-                                          <span className="text-primary font-black text-xs italic tracking-tighter">{idx + 1}</span>
-                                        </div>
-                                        <div className="flex-1 pt-2 min-w-0">
-                                          <p className="text-xs text-white/80 leading-relaxed font-medium transition-colors group-hover/step:text-white break-words">
-                                            {step}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    )) : (
-                                      <div className="p-8 rounded-[2rem] bg-white/[0.02] border border-dashed border-white/10 text-center flex flex-col items-center">
-                                        <Info size={24} className="text-white/10 mb-2" />
-                                        <p className="text-[11px] text-white/20 italic uppercase tracking-[0.2em] font-medium">Guía Táctica No Disponible</p>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Elite Tips Banner */}
-                              {ex.exercise.tips && (ex.exercise.tips as string[]).length > 0 && (
-                                <div className="p-6 bg-primary/[0.04] rounded-[2.5rem] border border-primary/20 relative overflow-hidden group/tips shadow-lg hover:bg-primary/[0.06] transition-all duration-500">
-                                  <div className="absolute top-0 right-0 p-6 opacity-[0.04] scale-[2.5] rotate-12 group-hover/tips:rotate-0 transition-transform duration-1000">
-                                    <Lightbulb size={64} className="text-primary" />
-                                  </div>
-                                  <div className="flex items-center space-x-3 text-primary mb-5 relative z-10">
-                                    <div className="p-2 bg-primary/10 rounded-xl border border-primary/20">
-                                      <Lightbulb size={16} />
-                                    </div>
-                                    <span className="text-[11px] font-black uppercase tracking-[0.3em] italic">Consejos del Consu</span>
-                                  </div>
-                                  <div className="flex flex-col space-y-4 relative z-10">
-                                    {(ex.exercise.tips as string[]).map((tip, idx) => (
-                                      <div key={idx} className="flex items-start space-x-4 p-4 rounded-2xl bg-black/40 border border-white/5 hover:border-primary/20 transition-all group/tip">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0 shadow-[0_0_12px_rgba(0,242,255,1)] group-hover/tip:scale-150 transition-transform" />
-                                        <p className="text-[11px] text-white/90 italic leading-relaxed font-medium break-words min-w-0">{tip}</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
                         </motion.div>
                       )}
                     </AnimatePresence>
