@@ -31,6 +31,7 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [weeklyVolume, setWeeklyVolume] = useState<number>(0);
   const [weeklyWorkoutsCount, setWeeklyWorkoutsCount] = useState<number>(0);
+  const [weeklyTarget, setWeeklyTarget] = useState<number>(5);
   const [streak, setStreak] = useState<number>(0);
   const [recentWorkouts, setRecentWorkouts] = useState<RecentWorkout[]>([]);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
@@ -70,7 +71,7 @@ const Dashboard = () => {
 
       if (weeklyData) {
         setWeeklyWorkoutsCount(weeklyData.length);
-        
+
         let totalVolume = 0;
         weeklyData.forEach(workout => {
           workout.workout_exercises.forEach((we: DashboardWorkoutExercise) => {
@@ -82,6 +83,16 @@ const Dashboard = () => {
           });
         });
         setWeeklyVolume(totalVolume);
+      }
+
+      // Fetch weekly target based on scheduled workouts
+      const { data: schedulesData } = await supabase
+        .from('schedules')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (schedulesData) {
+        setWeeklyTarget(schedulesData.length);
       }
 
       // 3. Fetch Recent Activity (Last 3 workouts)
@@ -113,7 +124,7 @@ const Dashboard = () => {
         }));
         setRecentWorkouts(formattedData as RecentWorkout[]);
       }
-      
+
       // 4. Calculate Streak (Consecutive weeks with workouts)
       const { data: allWorkouts } = await supabase
         .from('workouts')
@@ -131,7 +142,7 @@ const Dashboard = () => {
           return (now.getTime() - d.getTime()) < (30 * oneDay);
         }).length);
       }
-      
+
       setLoadingMetrics(false);
     }
     fetchData();
@@ -144,6 +155,9 @@ const Dashboard = () => {
     return "Buenas noches";
   };
 
+  const progressFraction = weeklyTarget > 0 ? Math.min(weeklyWorkoutsCount / weeklyTarget, 1) : 0;
+  const strokeDashoffset = 377 * (1 - progressFraction);
+
   return (
     <div className="space-y-8 max-w-lg mx-auto pb-10">
       <Helmet>
@@ -153,7 +167,7 @@ const Dashboard = () => {
 
       {/* Header with Dynamic Greeting */}
       <header className="flex justify-between items-center px-1">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
         >
@@ -167,7 +181,7 @@ const Dashboard = () => {
           </h1>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           className="relative group"
@@ -185,7 +199,7 @@ const Dashboard = () => {
 
       {/* Stats Highlight Grid */}
       <div className="grid grid-cols-2 gap-4">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -212,7 +226,7 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -241,7 +255,7 @@ const Dashboard = () => {
       </div>
 
       {/* Hero CTA - Training Card */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.3 }}
@@ -261,8 +275,8 @@ const Dashboard = () => {
                 </h3>
                 <p className="text-white/40 text-xs font-medium max-w-[200px]">No cuentes los días, haz que los días cuenten.</p>
               </div>
-              
-              <Link 
+
+              <Link
                 to="/routines"
                 className="group/btn relative inline-flex items-center px-8 py-4 bg-primary text-black rounded-2xl font-black uppercase italic tracking-widest text-[11px] overflow-hidden transition-all shadow-[0_10px_20px_rgba(0,242,255,0.2)] hover:shadow-primary/40 active:scale-95"
               >
@@ -276,18 +290,18 @@ const Dashboard = () => {
               <div className="w-32 h-32 rounded-full border-2 border-white/5 flex items-center justify-center relative shadow-inner overflow-hidden">
                 <div className="absolute inset-0 bg-primary/5 animate-pulse" />
                 <Dumbbell className="text-primary/20 group-hover:text-primary/40 group-hover:rotate-12 transition-all duration-700" size={64} />
-                
+
                 {/* Minimalist Progress Circle Background */}
                 <svg className="absolute inset-0 w-full h-full -rotate-90">
                   <circle cx="64" cy="64" r="60" fill="transparent" stroke="currentColor" strokeWidth="2" className="text-white/[0.02]" />
-                  <circle cx="64" cy="64" r="60" fill="transparent" stroke="currentColor" strokeWidth="4" strokeDasharray="377" strokeDashoffset={377 * (1 - (weeklyWorkoutsCount / 5))} className="text-primary/40" />
+                  <circle cx="64" cy="64" r="60" fill="transparent" stroke="currentColor" strokeWidth="4" strokeDasharray="377" strokeDashoffset={strokeDashoffset} className="text-primary/40" />
                 </svg>
               </div>
               <div className="absolute -bottom-2 -right-2 bg-background/80 backdrop-blur-xl border border-white/10 px-3 py-1.5 rounded-xl shadow-xl">
-                 <div className="flex items-center gap-1.5 font-black italic uppercase text-[10px]">
-                   <span className="text-primary">{weeklyWorkoutsCount}</span>
-                   <span className="text-white/20 whitespace-nowrap">/ 5 Semanal</span>
-                 </div>
+                <div className="flex items-center gap-1.5 font-black italic uppercase text-[10px]">
+                  <span className="text-primary">{weeklyWorkoutsCount}</span>
+                  <span className="text-white/20 whitespace-nowrap">/ &nbsp;{weeklyTarget} Semanal</span>
+                </div>
               </div>
             </div>
           </div>
@@ -306,7 +320,7 @@ const Dashboard = () => {
             <ChevronRight size={14} className="ml-0.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
-        
+
         <div className="space-y-4">
           <AnimatePresence mode="popLayout">
             {loadingMetrics ? (
@@ -328,18 +342,18 @@ const Dashboard = () => {
                 });
 
                 return (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.1 * index }}
-                    key={workout.id} 
+                    key={workout.id}
                     className="glass-card p-4 flex items-center justify-between group hover:bg-white/[0.03] hover:border-white/20 transition-all cursor-pointer"
                   >
                     <div className="flex items-center">
                       <div className="flex -space-x-3 mr-5">
                         {workout.workout_exercises?.slice(0, 3).map((we: DashboardWorkoutExercise, idx: number) => (
-                          <div 
-                            key={idx} 
+                          <div
+                            key={idx}
                             className="w-12 h-12 rounded-xl border-[3px] border-background bg-surface overflow-hidden shrink-0 hover:scale-110 hover:z-20 transition-all shadow-xl"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -387,21 +401,21 @@ const Dashboard = () => {
                 );
               })
             ) : (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="glass-card p-10 text-center opacity-40 border-dashed border-white/10"
               >
-                 <Dumbbell size={32} className="mx-auto mb-3 text-white/20" />
-                 <p className="text-xs font-black uppercase tracking-widest leading-loose">Aún no hay actividad</p>
-                 <p className="text-[10px] font-medium text-white/30">Tus progresos aparecerán aquí.</p>
+                <Dumbbell size={32} className="mx-auto mb-3 text-white/20" />
+                <p className="text-xs font-black uppercase tracking-widest leading-loose">Aún no hay actividad</p>
+                <p className="text-[10px] font-medium text-white/30">Tus progresos aparecerán aquí.</p>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </div>
 
-      <MediaModal 
+      <MediaModal
         isOpen={!!fsMedia}
         url={fsMedia?.url || ''}
         title={fsMedia?.title || ''}
