@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  fitplanner-pro:
+    container_name: fitplanner-pro
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+        - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+        - VITE_RAPIDAPI_KEY=${VITE_RAPIDAPI_KEY}
+    ports:
+      - "80:80"
+    restart: unless-stopped
