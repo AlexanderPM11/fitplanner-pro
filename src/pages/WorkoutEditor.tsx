@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '../api/supabase';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { Plus, Trash2, Check, ArrowLeft, Save, Dumbbell, Loader2, Timer, ChevronDown, TimerOff, GripVertical } from 'lucide-react';
 import type { Exercise } from '../types';
@@ -10,6 +9,7 @@ import MediaModal from '../components/shared/MediaModal';
 import ConfirmationModal from '../components/shared/ConfirmationModal';
 import { Helmet } from 'react-helmet-async';
 import { useNotification } from '../context/NotificationContext';
+import { backendDelete, backendGet, backendRequest } from '../api/backend';
 
 interface WorkoutExerciseState {
   id: string;
@@ -172,39 +172,12 @@ const WorkoutEditor = () => {
 
   const loadWorkoutData = async (id: string, isEditing: boolean) => {
     setLoading(true);
-    const { data: workout, error: workoutError } = await supabase
-      .from('workouts')
-      .select('*, workout_exercises(*, exercise:exercises(*), sets(*))')
-      .eq('id', id)
-      .single();
-
-    if (workoutError || !workout) {
-      console.error('Error loading workout data:', workoutError);
-      return;
-    }
-
-    setName(workout.name);
-    setIsTemplate(workout.is_template);
-    
-    if (!isEditing) {
-      setIsTemplate(false);
-    }
-
-    interface DBSet { weight: number, reps: number, completed: boolean, order_index: number }
-
-    const loadedExercises: WorkoutExerciseState[] = workout.workout_exercises
-      .sort((a: any, b: any) => a.order_index - b.order_index)
-      .map((we: any) => ({
-        id: we.id,
-        exercise: Array.isArray(we.exercise) ? we.exercise[0] : we.exercise,
-        sets: (we.sets || []).sort((a: DBSet, b: DBSet) => a.order_index - b.order_index).map((s: DBSet) => ({
-          weight: s.weight ? s.weight.toString() : '',
-          reps: s.reps ? s.reps.toString() : '',
-          completed: s.completed
-        }))
-      }));
-
-    setExercises(loadedExercises);
+    try {
+      const workout = await backendGet<{ id: string; name: string; isTemplate: boolean; exercises: Array<{ id: string; exerciseId: string; exerciseName: string; category: string; imageUrl: string | null; videoUrl: string | null; sets: Array<{ weight: number | null; reps: number | null; completed: boolean }> }> }>(`/api/workouts/${id}`);
+      setName(workout.name);
+      setIsTemplate(isEditing && workout.isTemplate);
+      setExercises(workout.exercises.map((item) => ({ id: item.id, exercise: { id: item.exerciseId, name: item.exerciseName, category: item.category, image_url: item.imageUrl, video_url: item.videoUrl, description: null }, sets: item.sets.map((set) => ({ weight: set.weight?.toString() ?? '', reps: set.reps?.toString() ?? '', completed: set.completed })) })));
+    } catch { showToast('No se pudo cargar el entrenamiento', 'error'); }
     setLoading(false);
   };
 
@@ -354,94 +327,14 @@ const WorkoutEditor = () => {
   const saveWorkout = async () => {
     if (exercises.length === 0) return;
     setSaving(true);
-    
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
       const currentEditId = searchParams.get('editId');
-      let workoutId = currentEditId;
-
-      // 1. Create or Update Workout
-      if (currentEditId) {
-        const { error: updateError } = await supabase
-          .from('workouts')
-          .update({
-            name,
-            is_template: isTemplate,
-            completed_at: isTemplate ? null : new Date().toISOString()
-          })
-          .eq('id', currentEditId);
-        
-        if (updateError) throw updateError;
-
-        // Delete existing exercises/sets to re-insert updated ones (cleanest way to handle adds/removes)
-        const { error: deleteError } = await supabase
-          .from('workout_exercises')
-          .delete()
-          .eq('workout_id', currentEditId);
-        
-        if (deleteError) throw deleteError;
-      } else {
-        const { data: newWorkout, error: workoutError } = await supabase
-          .from('workouts')
-          .insert({
-            user_id: user.id,
-            name,
-            started_at: new Date().toISOString(),
-            completed_at: isTemplate ? null : new Date().toISOString(),
-            is_template: isTemplate
-          })
-          .select()
-          .single();
-
-        if (workoutError) throw workoutError;
-        workoutId = newWorkout.id;
-      }
-
-      // 2. Create Workout Exercises and Sets
-      for (let i = 0; i < exercises.length; i++) {
-        const { data: we, error: weError } = await supabase
-          .from('workout_exercises')
-          .insert({
-            workout_id: workoutId,
-            exercise_id: exercises[i].exercise.id,
-            order_index: i
-          })
-          .select()
-          .single();
-
-        if (weError) throw weError;
-
-        const setsToInsert = exercises[i].sets.map((set, setIndex) => ({
-          workout_exercise_id: we.id,
-          weight: parseFloat(set.weight) || 0,
-          reps: parseInt(set.reps) || 0,
-          completed: set.completed,
-          order_index: setIndex
-        }));
-
-        const { error: setsError } = await supabase
-          .from('sets')
-          .insert(setsToInsert);
-
-        if (setsError) throw setsError;
-      }
-
+      const payload = { name, description: null, isTemplate, startedAtUtc: new Date().toISOString(), completedAtUtc: isTemplate ? null : new Date().toISOString(), exercises: exercises.map((item) => ({ exerciseId: item.exercise.id, sets: item.sets.map((set) => ({ weight: Number.parseFloat(set.weight) || 0, reps: Number.parseInt(set.reps, 10) || 0, completed: set.completed })) })) };
+      if (currentEditId) await backendRequest(`/api/workouts/${currentEditId}`, { name, description: null, completedAtUtc: payload.completedAtUtc, exercises: payload.exercises });
+      else { const created = await backendRequest<{ id: string }>('/api/workouts', payload); const params = new URLSearchParams(window.location.search); params.set('editId', created.id); setSearchParams(params, { replace: true }); }
       showToast(isTemplate ? 'Rutina guardada con éxito' : 'Entrenamiento guardado con éxito', 'success');
-      
-      // Update URL if it was a new workout, but STAY on the page
-      if (!currentEditId) {
-        const params = new URLSearchParams(window.location.search);
-        params.set('editId', workoutId!);
-        setSearchParams(params, { replace: true });
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Error al guardar', 'error');
-    } finally {
-      setSaving(false);
-    }
+    } catch (err) { console.error(err); showToast('Error al guardar', 'error'); }
+    finally { setSaving(false); }
   };
 
   const deleteWorkout = async () => {
@@ -450,12 +343,7 @@ const WorkoutEditor = () => {
     
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('workouts')
-        .delete()
-        .eq('id', editId);
-      
-      if (error) throw error;
+      await backendDelete(`/api/workouts/${editId}`);
       showToast('Rutina eliminada', 'success');
       navigate('/routines');
     } catch (err) {
@@ -853,3 +741,5 @@ const WorkoutEditor = () => {
 };
 
 export default WorkoutEditor;
+
+

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../api/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, ChevronRight, Activity, Dumbbell, Flame, Zap, Trophy, TrendingUp, Clock, Target, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -8,6 +7,7 @@ import MediaModal from '../components/shared/MediaModal';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Profile } from '../types';
+import { backendGet } from '../api/backend';
 
 interface DashboardWorkoutSet {
   weight: number | null;
@@ -39,110 +39,24 @@ const Dashboard = () => {
 
   useEffect(() => {
     async function fetchData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // 1. Fetch Profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      if (profileData) setProfile(profileData);
-
-      // Calculate start of week (Sunday or Monday, let's use a 7 day ago window for simplicity or true start of week)
-      const now = new Date();
-      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-      startOfWeek.setHours(0, 0, 0, 0);
-
-      // 2. Fetch Weekly Metrics (Workouts completed this week)
-      const { data: weeklyData } = await supabase
-        .from('workouts')
-        .select(`
-          id,
-          workout_exercises (
-            sets ( weight, reps, completed )
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('is_template', false)
-        .not('completed_at', 'is', null)
-        .gte('started_at', startOfWeek.toISOString());
-
-      if (weeklyData) {
-        setWeeklyWorkoutsCount(weeklyData.length);
-
-        let totalVolume = 0;
-        weeklyData.forEach(workout => {
-          workout.workout_exercises.forEach((we: DashboardWorkoutExercise) => {
-            we.sets.forEach((set: DashboardWorkoutSet) => {
-              if (set.completed && set.weight && set.reps) {
-                totalVolume += (set.weight * set.reps);
-              }
-            });
-          });
-        });
-        setWeeklyVolume(totalVolume);
-      }
-
-      // Fetch weekly target based on scheduled workouts
-      const { data: schedulesData } = await supabase
-        .from('schedules')
-        .select('id')
-        .eq('user_id', user.id);
-
-      if (schedulesData) {
-        setWeeklyTarget(schedulesData.length);
-      }
-
-      // 3. Fetch Recent Activity (Last 3 workouts)
-      const { data: recentData } = await supabase
-        .from('workouts')
-        .select(`
-          id,
-          name,
-          started_at,
-          workout_exercises (
-            exercise:exercises ( image_url ),
-            sets ( weight, reps, completed )
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('is_template', false)
-        .not('completed_at', 'is', null)
-        .order('started_at', { ascending: false })
-        .limit(3);
-
-      if (recentData) {
-        // Flatten the exercise array returned by Supabase join
-        const formattedData = recentData.map((workout: any) => ({
-          ...workout,
-          workout_exercises: workout.workout_exercises.map((we: any) => ({
-            ...we,
-            exercise: Array.isArray(we.exercise) ? we.exercise[0] : we.exercise
-          }))
-        }));
-        setRecentWorkouts(formattedData as RecentWorkout[]);
-      }
-
-      // 4. Calculate Streak (Consecutive weeks with workouts)
-      const { data: allWorkouts } = await supabase
-        .from('workouts')
-        .select('completed_at')
-        .eq('user_id', user.id)
-        .eq('is_template', false)
-        .not('completed_at', 'is', null)
-        .order('completed_at', { ascending: false });
-
-      if (allWorkouts && allWorkouts.length > 0) {
-        // Simple logic: session count in the last 30 days
-        const oneDay = 24 * 60 * 60 * 1000;
-        setStreak(allWorkouts.filter(w => {
-          const d = new Date(w.completed_at);
-          return (now.getTime() - d.getTime()) < (30 * oneDay);
-        }).length);
-      }
-
+      setLoadingMetrics(true);
+      try {
+        const [data, profileData, calendar] = await Promise.all([
+          backendGet<Array<{ id: string; name: string; startedAtUtc: string; completedAtUtc: string | null; exercises: Array<{ imageUrl: string | null; sets: Array<{ weight: number | null; reps: number | null; completed: boolean }> }> }>>('/api/workouts?templates=false'),
+          backendGet<Profile>('/api/me'),
+          backendGet<{ schedules: unknown[] }>('/api/schedules'),
+        ]);
+        setProfile(profileData);
+        setWeeklyTarget(calendar.schedules.length);
+        const completed = data.filter((item) => item.completedAtUtc);
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - 7);
+        const weekly = completed.filter((item) => new Date(item.startedAtUtc) >= weekStart);
+        setWeeklyWorkoutsCount(weekly.length);
+        setStreak(completed.length);
+        setWeeklyVolume(weekly.reduce((total, workout) => total + workout.exercises.reduce((subtotal, exercise) => subtotal + exercise.sets.reduce((sets, set) => sets + (set.completed && set.weight && set.reps ? set.weight * set.reps : 0), 0), 0), 0));
+        setRecentWorkouts(completed.slice(0, 3).map((item) => ({ id: item.id, name: item.name, started_at: item.startedAtUtc, workout_exercises: item.exercises.map((exercise) => ({ exercise: { image_url: exercise.imageUrl }, sets: exercise.sets })) })));
+      } catch { /* The empty state remains useful while the API is unavailable. */ }
       setLoadingMetrics(false);
     }
     fetchData();
@@ -175,7 +89,7 @@ const Dashboard = () => {
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <h2 className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">{getGreeting()}</h2>
           </div>
-          <h1 className="text-4xl font-black tracking-tighter italic flex items-baseline">
+          <h1 className="page-title flex items-baseline">
             {profile?.full_name?.split(' ')[0] || 'ATLETA'}
             <span className="text-primary ml-1">.</span>
           </h1>
@@ -426,3 +340,5 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
+

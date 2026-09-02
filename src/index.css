@@ -1,31 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-background: #0a0a0c;
-  --color-surface: #1a1a1e;
-  --color-primary: #00f2ff;
-  --color-primary-hover: #00d2df;
-  --color-secondary: #7000ff;
+  --color-background: #07100d;
+  --color-surface: #0d1b16;
+  --color-primary: #c7f36b;
+  --color-primary-hover: #d8ff83;
+  --color-secondary: #6ce5c4;
 }
 
 :root {
   color-scheme: dark;
+  --ink: #f2f7e9;
+  --muted: rgba(242,247,233,.52);
+  --faint: rgba(242,247,233,.28);
+  --line: rgba(214,245,184,.12);
+  --panel: rgba(15, 31, 24, .74);
+  --panel-strong: #10241b;
+  --lime: #c7f36b;
+  --mint: #6ce5c4;
 }
 
 body {
   @apply bg-background text-white antialiased selection:bg-primary/30;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', 'Avenir Next', system-ui, sans-serif;
   margin: 0;
   min-height: 100vh;
+  background-image: radial-gradient(circle at 84% -8%, rgba(199,243,107,.15), transparent 27rem), radial-gradient(circle at -15% 46%, rgba(108,229,196,.08), transparent 25rem), linear-gradient(135deg, rgba(255,255,255,.012) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.012) 50%, rgba(255,255,255,.012) 75%, transparent 75%);
+  background-size: auto, auto, 7px 7px;
 }
 
 @layer components {
   .glass-card {
-    @apply bg-surface/50 border border-white/10 backdrop-blur-md rounded-2xl;
+    @apply bg-surface/70 border border-white/10 backdrop-blur-xl rounded-[1.5rem];
+    box-shadow: 0 18px 60px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.035);
   }
   
   .btn-primary {
-    @apply bg-primary hover:bg-primary-hover text-black font-bold py-3 px-6 rounded-xl transition-all active:scale-95 shadow-[0_0_20px_rgba(0,242,255,0.3)];
+    @apply bg-primary hover:bg-primary-hover text-[#07100d] font-bold py-3 px-6 rounded-xl transition-all active:scale-95 shadow-[0_0_24px_rgba(199,243,107,0.2)];
   }
 
   .nav-item {
@@ -36,6 +48,29 @@ body {
     @apply text-primary;
   }
 }
+
+.mobile-shell { width: min(100%, 30rem); margin-inline: auto; }
+.safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+
+.app-topbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.5rem; }
+.brand-lockup { display:flex; align-items:center; gap:.7rem; }
+.brand-mark { display:grid; place-items:center; width:2.3rem; height:2.3rem; border-radius:.8rem; background:var(--lime); color:#07100d; box-shadow:0 0 26px rgba(199,243,107,.18); }
+.brand-name { font-size:.78rem; font-weight:800; letter-spacing:-.04em; text-transform:uppercase; }
+.brand-name span { color:var(--lime); }
+.eyebrow { color:var(--faint); font-family:'DM Mono', monospace; font-size:.62rem; letter-spacing:.12em; text-transform:uppercase; }
+.page-title { color:var(--ink); font-size:clamp(2rem, 9vw, 3.2rem); font-weight:800; letter-spacing:-.075em; line-height:.95; }
+.page-copy { color:var(--muted); font-size:.85rem; line-height:1.5; }
+.section-label { color:var(--muted); font-family:'DM Mono', monospace; font-size:.62rem; font-weight:500; letter-spacing:.13em; text-transform:uppercase; }
+.metric-value { color:var(--ink); font-size:2rem; font-weight:800; letter-spacing:-.07em; line-height:1; }
+.metric-unit { color:var(--faint); font-family:'DM Mono',monospace; font-size:.62rem; text-transform:uppercase; }
+.soft-divider { border-color:var(--line); }
+.tap-target { min-width:2.75rem; min-height:2.75rem; }
+
+input, select, textarea { border-radius:1rem !important; border-color:var(--line) !important; background:rgba(255,255,255,.045) !important; }
+button, a { -webkit-tap-highlight-color:transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px solid var(--lime); outline-offset:3px; }
+
+@media (min-width: 768px) { .mobile-shell { width:min(100%, 48rem); } }
 
 /* Custom scrollbar for a premium feel */
 ::-webkit-scrollbar {

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { supabase } from '../../api/supabase';
-import { Dumbbell, Mail, Lock, User as UserIcon } from 'lucide-react';
+import { Dumbbell, Mail, Lock, User as UserIcon, ArrowLeft, KeyRound } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { useNotification } from '../../context/NotificationContext';
+import { backendRequest } from '../../api/backend';
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isRecovering, setIsRecovering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -20,25 +21,12 @@ const Auth = () => {
     setError(null);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-            },
-          },
-        });
-        if (error) throw error;
-        showToast('Check your email for the confirmation link!', 'success');
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-      }
+      const result = await backendRequest<{ token?: string }> (isSignUp ? '/api/auth/register' : '/api/auth/login', isSignUp
+        ? { email, password, displayName: fullName }
+        : { email, password });
+      if (result.token) localStorage.setItem('fitplanner_token', result.token);
+      showToast(isSignUp ? 'Cuenta creada. Bienvenido a FitPlanner.' : 'Sesión iniciada.', 'success');
+      window.location.reload();
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -50,25 +38,17 @@ const Auth = () => {
     }
   };
 
-  const handleGoogleAuth = async () => {
+
+  const handleRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      if (error) throw error;
+      await backendRequest('/api/auth/forgot-password', { email, frontendUrl: window.location.origin });
+      showToast('Si existe una cuenta, recibirás un correo con los pasos.', 'success');
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Ocurrió un error inesperado al iniciar sesión con Google.');
-      }
-      setLoading(false);
-    }
+      setError(err instanceof Error ? err.message : 'No se pudo enviar el correo.');
+    } finally { setLoading(false); }
   };
 
   return (
@@ -77,7 +57,7 @@ const Auth = () => {
         <title>{isSignUp ? 'Únete a FitPlanner Pro' : 'Iniciar Sesión | FitPlanner Pro'}</title>
         <meta name="description" content="La herramienta definitiva para atletas serios. Regístrate o inicia sesión para empezar a dominar tus entrenamientos." />
       </Helmet>
-      <motion.div 
+        <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="glass-card w-full max-w-md p-8 relative overflow-hidden"
@@ -86,22 +66,23 @@ const Auth = () => {
           <Dumbbell size={80} />
         </div>
 
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-white mb-2 uppercase tracking-tighter italic">
+          <div className="text-center mb-8">
+          <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-primary text-background shadow-[0_0_30px_rgba(199,243,107,.2)]"><Dumbbell size={28} /></div>
+          <h1 className="text-3xl font-extrabold text-white mb-2 tracking-[-0.06em]">
             FitPlanner <span className="text-primary">Pro</span>
           </h1>
           <p className="text-white/50 text-sm">
-            {isSignUp ? 'Create your profile to start tracking' : 'Welcome back, athlete'}
+            {isRecovering ? 'Recupera el acceso a tu cuenta' : isSignUp ? 'Tu entrenamiento empieza aquí' : 'Tu progreso te estaba esperando'}
           </p>
         </div>
 
-        <form onSubmit={handleAuth} className="space-y-4">
-          {isSignUp && (
+        <form onSubmit={isRecovering ? handleRecovery : handleAuth} className="space-y-4">
+          {isSignUp && !isRecovering && (
             <div className="relative">
               <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={20} />
               <input
                 type="text"
-                placeholder="Full Name"
+                placeholder="Nombre completo"
                 className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:border-primary outline-none transition-all"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
@@ -114,7 +95,7 @@ const Auth = () => {
             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={20} />
             <input
               type="email"
-              placeholder="Email Address"
+                placeholder="Correo electrónico"
               className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:border-primary outline-none transition-all"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -122,17 +103,17 @@ const Auth = () => {
             />
           </div>
 
-          <div className="relative">
+          {!isRecovering && <div className="relative">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={20} />
             <input
               type="password"
-              placeholder="Password"
+              placeholder="Contraseña (mínimo 8 caracteres)"
               className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:border-primary outline-none transition-all"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-          </div>
+          </div>}
 
           {error && (
             <div className="text-red-400 text-xs bg-red-400/10 p-3 rounded-xl border border-red-400/20">
@@ -145,38 +126,22 @@ const Auth = () => {
             disabled={loading}
             className="btn-primary w-full mt-4"
           >
-            {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+            {loading ? 'Procesando…' : (isRecovering ? 'Enviar instrucciones' : isSignUp ? 'Crear mi cuenta' : 'Entrar a mi cuenta')}
           </button>
         </form>
 
-        <div className="mt-8 flex items-center space-x-4">
-          <div className="flex-1 h-px bg-white/10" />
-          <span className="text-[10px] uppercase font-bold text-white/20 tracking-[0.2em]">OR CONTINUE WITH</span>
-          <div className="flex-1 h-px bg-white/10" />
-        </div>
+        {!isSignUp && !isRecovering && <button type="button" onClick={() => setIsRecovering(true)} className="mt-5 flex w-full items-center justify-center gap-2 text-sm text-white/45 transition-colors hover:text-primary"><KeyRound size={15}/> ¿Olvidaste tu contraseña?</button>}
 
-        <button
-          onClick={handleGoogleAuth}
-          disabled={loading}
-          className="w-full mt-6 bg-white py-3 rounded-xl flex items-center justify-center space-x-3 text-black font-bold hover:bg-white/90 transition-all active:scale-95 disabled:opacity-50"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-          </svg>
-          <span>Google Account</span>
-        </button>
+        {isRecovering && <button type="button" onClick={() => setIsRecovering(false)} className="mt-5 flex w-full items-center justify-center gap-2 text-sm text-white/45 transition-colors hover:text-primary"><ArrowLeft size={15}/> Volver al inicio de sesión</button>}
 
-        <div className="mt-8 text-center text-sm">
+        {!isRecovering && <div className="mt-8 text-center text-sm">
           <button
             onClick={() => setIsSignUp(!isSignUp)}
             className="text-white/50 hover:text-primary transition-colors font-medium"
           >
-            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+            {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿Aún no tienes cuenta? Regístrate'}
           </button>
-        </div>
+        </div>}
       </motion.div>
     </div>
   );

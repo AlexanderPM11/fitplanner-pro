@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { supabase } from './api/supabase';
 import Layout from './components/layout/Layout';
 import Auth from './components/auth/Auth';
 import Dashboard from './pages/Dashboard';
@@ -9,26 +8,14 @@ import History from './pages/History';
 import ProfilePage from './pages/Profile';
 import Planner from './pages/Planner';
 import Routines from './pages/Routines';
-import type { Session } from '@supabase/supabase-js';
+import ResetPassword from './pages/ResetPassword';
+import AdminUsers from './pages/AdminUsers';
 
 const App = () => {
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const authenticated = Boolean(localStorage.getItem('fitplanner_token'));
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  useEffect(() => { setLoading(false); }, []);
 
   if (loading) {
     return (
@@ -38,7 +25,9 @@ const App = () => {
     );
   }
 
-  if (!session) {
+  if (window.location.pathname === '/reset-password') return <ResetPassword />;
+
+  if (!authenticated) {
     return <Auth />;
   }
 
@@ -51,6 +40,7 @@ const App = () => {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/planner" element={<Planner />} />
           <Route path="/routines" element={<Routines />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Heart, Activity, Info } from 'lucide-react';
 import type { Exercise } from '../../types';
-import { supabase } from '../../api/supabase';
 import { useNotification } from '../../context/NotificationContext';
+import { backendRequest } from '../../api/backend';
 
 interface ExerciseDetailSheetProps {
   exercise: Exercise | null;
@@ -16,24 +16,15 @@ interface ExerciseDetailSheetProps {
 const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({ exercise, isOpen, onClose, onAction, mode }) => {
   const { showToast } = useNotification();
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isFavorite, setIsFavorite] = useState(Boolean(exercise?.is_favorite));
 
   if (!exercise) return null;
 
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      if (exercise.is_favorite) {
-        await supabase.from('favorite_exercises').delete().eq('user_id', user.id).eq('exercise_id', exercise.id);
-        exercise.is_favorite = false;
-        showToast('Eliminado de favoritos', 'info');
-      } else {
-        await supabase.from('favorite_exercises').insert({ user_id: user.id, exercise_id: exercise.id });
-        exercise.is_favorite = true;
-        showToast('Añadido a favoritos', 'success');
-      }
+      const result = await backendRequest<{ isFavorite: boolean }>(`/api/exercises/${exercise.id}/favorite`, {});
+      setIsFavorite(result.isFavorite); showToast(result.isFavorite ? 'Añadido a favoritos' : 'Eliminado de favoritos', result.isFavorite ? 'success' : 'info');
     } catch (e) {
       console.error(e);
       showToast('Error al actualizar favorito', 'error');
@@ -85,8 +76,8 @@ const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({ exercise, isO
                 <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0A]/50 via-transparent to-transparent pointer-events-none" />
                 
                 <div className="absolute top-10 right-4 flex flex-col gap-2 z-10">
-                  <button onClick={toggleFavorite} className={`w-10 h-10 rounded-full backdrop-blur-xl border flex items-center justify-center transition-all ${exercise.is_favorite ? 'bg-red-500/20 border-red-500/40 text-red-400' : 'bg-black/40 border-white/10 text-white/40 hover:text-white'}`}>
-                    <Heart size={16} fill={exercise.is_favorite ? "currentColor" : "none"} />
+                  <button onClick={toggleFavorite} className={`w-10 h-10 rounded-full backdrop-blur-xl border flex items-center justify-center transition-all ${isFavorite ? 'bg-red-500/20 border-red-500/40 text-red-400' : 'bg-black/40 border-white/10 text-white/40 hover:text-white'}`}>
+                    <Heart size={16} fill={isFavorite ? "currentColor" : "none"} />
                   </button>
                   <button onClick={onClose} className="w-10 h-10 rounded-full backdrop-blur-xl border border-white/10 bg-black/40 flex items-center justify-center text-white/40 hover:text-white transition-all">
                     <X size={16} />

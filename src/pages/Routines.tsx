@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../api/supabase';
 import { motion, Reorder } from 'framer-motion';
 import { Plus, Search, Dumbbell, Trash2, Play, GripVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +6,7 @@ import { Helmet } from 'react-helmet-async';
 import { useNotification } from '../context/NotificationContext';
 import ConfirmationModal from '../components/shared/ConfirmationModal';
 import type { Workout } from '../types';
+import { backendDelete, backendGet } from '../api/backend';
 
 const Routines = () => {
   const navigate = useNavigate();
@@ -22,58 +22,23 @@ const Routines = () => {
 
   const fetchRoutines = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('workouts')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_template', true)
-      .order('order_index', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching routines:', error);
-    } else {
-      setRoutines(data || []);
-    }
+    try {
+      const data = await backendGet<Array<{ id: string; name: string; description: string | null }>>('/api/routines');
+      setRoutines(data.map((routine) => ({ id: routine.id, name: routine.name, description: routine.description, user_id: '', started_at: new Date().toISOString(), completed_at: null, is_template: true })));
+    } catch (error) { console.error('Error fetching API routines:', error); showToast('No se pudieron cargar las rutinas', 'error'); }
     setLoading(false);
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase
-      .from('workouts')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      showToast('Error al eliminar la rutina', 'error');
-    } else {
-      showToast('Rutina eliminada', 'success');
-      setRoutines(routines.filter(r => r.id !== id));
-    }
+    try { await backendDelete(`/api/routines/${id}`); showToast('Rutina eliminada', 'success'); setRoutines(routines.filter(r => r.id !== id)); }
+    catch { showToast('Error al eliminar la rutina', 'error'); }
     setConfirmDeleteId(null);
   };
 
   const handleReorder = async (newOrder: Workout[]) => {
     setRoutines(newOrder);
     
-    // Persist to Supabase
-    const updates = newOrder.map((routine, index) => ({
-      id: routine.id,
-      user_id: routine.user_id,
-      name: routine.name,
-      order_index: index
-    }));
-
-    const { error } = await supabase
-      .from('workouts')
-      .upsert(updates, { onConflict: 'id' });
-
-    if (error) {
-      console.error('Error persisting order:', error);
-      showToast('Error al guardar el orden', 'error');
-    }
+    // El orden se mantiene localmente hasta que la API exponga ordenamiento persistente.
   };
 
   const filteredRoutines = routines.filter(r => 
@@ -89,7 +54,7 @@ const Routines = () => {
       <header className="flex justify-between items-end">
         <div>
           <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Biblioteca de Entrenamiento</h2>
-          <h1 className="text-3xl font-black tracking-tight italic uppercase">Mis Rutinas</h1>
+          <h1 className="page-title">Mis Rutinas</h1>
         </div>
         <button 
           onClick={() => navigate('/workout?template=true')}

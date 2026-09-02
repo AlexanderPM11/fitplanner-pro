@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../api/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, X, Search, RotateCcw } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
@@ -7,6 +6,7 @@ import type { Schedule, Workout, ScheduleCompletion } from '../types';
 import WeeklyCalendar from '../components/planner/WeeklyCalendar';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../context/NotificationContext';
+import { backendDelete, backendGet, backendRequest } from '../api/backend';
 import ConfirmationModal from '../components/shared/ConfirmationModal';
 
 const Planner = () => {
@@ -22,45 +22,12 @@ const Planner = () => {
 
   useEffect(() => {
     const fetchAllData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      // 1. Fetch Templates
-      const p1 = supabase
-        .from('workouts')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_template', true)
-        .order('name', { ascending: true });
-
-      // 2. Fetch Schedules
-      const p2 = supabase
-        .from('schedules')
-        .select('*, workout:workouts(*)')
-        .order('day_of_week', { ascending: true });
-
-      // 3. Fetch Completions
-      const d = new Date();
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      const start = new Date(d.setDate(diff));
-      start.setHours(0,0,0,0);
-      const startOfWeek = start.toISOString().split('T')[0];
-
-      const p3 = supabase
-        .from('schedule_completions')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('completed_at', startOfWeek);
-
-      const [resTemplates, resSchedules, resCompletions] = await Promise.all([p1, p2, p3]);
-
-      if (!resTemplates.error) setTemplates(resTemplates.data || []);
-      if (!resSchedules.error) setSchedules(resSchedules.data || []);
-      if (!resCompletions.error) setCompletions(resCompletions.data || []);
+      try {
+        const routines = await backendGet<Array<{ id: string; name: string; description: string | null }>>('/api/routines');
+        const calendar = await backendGet<{ schedules: Schedule[]; completions: ScheduleCompletion[] }>('/api/schedules');
+        setTemplates(routines.map((routine) => ({ id: routine.id, user_id: '', name: routine.name, description: routine.description, started_at: new Date().toISOString(), completed_at: null, is_template: true })));
+        setSchedules(calendar.schedules); setCompletions(calendar.completions);
+      } catch { showToast('No se pudo cargar tu semana', 'error'); }
 
       setLoading(false);
     };
@@ -69,46 +36,18 @@ const Planner = () => {
   }, []);
 
   const fetchSchedules = async () => {
-    const { data, error } = await supabase
-      .from('schedules')
-      .select('*, workout:workouts(*)')
-      .order('day_of_week', { ascending: true });
-    
-    if (error) console.error('Error fetching schedules:', error);
-    else setSchedules(data || []);
+    const data = await backendGet<{ schedules: Schedule[]; completions: ScheduleCompletion[] }>('/api/schedules');
+    setSchedules(data.schedules); setCompletions(data.completions);
   };
 
   const handleAddWorkoutToDay = async (workoutId: string) => {
     if (showAddModal === null) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { error } = await supabase
-      .from('schedules')
-      .insert({
-        user_id: user.id,
-        workout_id: workoutId,
-        day_of_week: showAddModal
-      });
-
-    if (error) {
-      console.error('Error adding schedule:', error);
-      showToast('Esta rutina ya está programada para este día.', 'error');
-    } else {
-      setShowAddModal(null);
-      fetchSchedules();
-    }
+    try { await backendRequest('/api/schedules', { workoutId, dayOfWeek: showAddModal }); setShowAddModal(null); fetchSchedules(); } catch { showToast('Esta rutina ya está programada para este día.', 'error'); }
   };
 
   const handleRemoveSchedule = async (scheduleId: string) => {
-    const { error } = await supabase
-      .from('schedules')
-      .delete()
-      .eq('id', scheduleId);
-    
-    if (error) console.error('Error removing schedule:', error);
-    else fetchSchedules();
+    try { await backendDelete(`/api/schedules/${scheduleId}`); fetchSchedules(); } catch { showToast('No se pudo quitar la rutina.', 'error'); }
   };
 
   const handleStartWorkout = (workoutId: string) => {
@@ -117,57 +56,11 @@ const Planner = () => {
   };
 
   const handleToggleCompletion = async (scheduleId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const today = new Date().toISOString().split('T')[0];
-    const existing = completions.find(c => c.schedule_id === scheduleId && c.completed_at === today);
-
-    if (existing) {
-      const { error } = await supabase
-        .from('schedule_completions')
-        .delete()
-        .eq('id', existing.id);
-      
-      if (!error) {
-        setCompletions(completions.filter(c => c.id !== existing.id));
-      }
-    } else {
-      const { data, error } = await supabase
-        .from('schedule_completions')
-        .insert({
-          user_id: user.id,
-          schedule_id: scheduleId,
-          completed_at: today
-        })
-        .select()
-        .single();
-      
-      if (!error && data) {
-        setCompletions([...completions, data]);
-      }
-    }
+    try { await backendRequest(`/api/schedules/${scheduleId}/toggle`, {}); fetchSchedules(); } catch { showToast('No se pudo actualizar el día.', 'error'); }
   };
 
   const handleClearAllCompletions = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || completions.length === 0) return;
-
-    const ids = completions.map(c => c.id);
-
-    const { error } = await supabase
-      .from('schedule_completions')
-      .delete()
-      .in('id', ids);
-
-    if (error) {
-      console.error('Error clearing completions:', error);
-      showToast('No se pudieron limpiar los checks.', 'error');
-    } else {
-      setCompletions([]);
-      setShowClearConfirm(false);
-      showToast('Semana reiniciada correctamente.', 'success');
-    }
+    try { await backendDelete('/api/schedules/completions'); setCompletions([]); setShowClearConfirm(false); showToast('Semana reiniciada correctamente.', 'success'); } catch { showToast('No se pudieron limpiar los checks.', 'error'); }
   };
 
   const filteredTemplates = templates.filter(t => 
@@ -188,7 +81,7 @@ const Planner = () => {
             </div>
             <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Organización de Entrenamiento</h2>
           </div>
-          <h1 className="text-3xl font-black tracking-tight italic uppercase">Mi Semana</h1>
+          <h1 className="page-title">Mi Semana</h1>
           <p className="text-white/30 text-xs font-medium mt-1">Organiza tu semana de entrenamiento de lunes a domingo.</p>
         </div>
 

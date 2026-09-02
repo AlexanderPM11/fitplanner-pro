@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../api/supabase';
 import { X, Loader2, ChevronRight, LayoutGrid } from 'lucide-react';
 import type { Exercise } from '../../types';
 import ExerciseDetailSheet from './ExerciseDetailSheet';
+import { backendGet } from '../../api/backend';
 
 const SPANISH_CATEGORIES: Record<string, string> = {
   'BACK': 'Espalda',
@@ -73,85 +73,15 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
   const fetchExercisesCategory = async (category: string) => {
     setLoading(true);
     setExercises([]); 
-    
-    const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
-    if (!apiKey) {
-      setLoading(false);
-      return;
-    }
 
-    try {
-      // 1. Intentar cargar desde el caché local (Supabase)
-      let query = supabase.from('exercises').select('*').limit(300);
-      if (category !== 'Todos') {
-        query = query.eq('category', category);
-      }
-      
-      const { data: localData } = await query.order('name');
-      
-      // Solo usamos el cache si tenemos una cantidad significativa (ej. > 100)
-      // O si es una categoría que sabemos que es pequeña (esto es un compromiso)
-      if (localData && localData.length >= 100) {
-        setExercises(localData);
-        setLoading(false);
-        return;
-      }
-
-      const targetCount = 200;
-      let allStubs: any[] = [];
-      let offset = 0;
-      let hasMore = true;
-
-      while (allStubs.length < targetCount && hasMore) {
-        let url = `https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises?limit=40&offset=${offset}`;
-        if (category !== 'Todos') {
-          url += `&bodyParts=${category}`;
-        }
-
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'x-rapidapi-key': apiKey,
-            'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com'
-          }
-        });
-        const res = await response.json();
-        
-        if (res.data && res.data.length > 0) {
-          const pageStubs = res.data.map((apiEx: any) => ({
-            api_id: apiEx.exerciseId,
-            name: apiEx.name,
-            category: apiEx.bodyParts?.[0] || category, 
-            equipment: apiEx.equipments?.[0] || 'Cualquiera',
-            image_url: apiEx.imageUrl,
-          }));
-          
-          allStubs = [...allStubs, ...pageStubs];
-          offset += res.data.length;
-          if (res.data.length < 40) hasMore = false;
-        } else {
-          hasMore = false;
-        }
-      }
-      
-      if (allStubs.length > 0) {
-        const uniqueStubs = Array.from(new Map(allStubs.filter(s => s.api_id).map(s => [s.api_id, s])).values());
-        
-        const { data: insertedData } = await supabase
-          .from('exercises')
-          .upsert(uniqueStubs, { onConflict: 'api_id' })
-          .select();
-        
-        if (insertedData) {
-          if (category === 'Todos') {
-            setExercises(insertedData.slice(0, 200));
-          } else {
-             setExercises(insertedData.filter(e => e.category === category).slice(0, 200));
-          }
-        }
-      }
-    } catch(e) {
-      console.error('Failed API fetch', e);
+    {
+      try {
+        const data = await backendGet<Exercise[]>('/api/exercises');
+        const apiCategories = Array.from(new Set(data.map((item) => item.category))).sort();
+        setCategories(['Todos', ...apiCategories]);
+        setExercises(category === 'Todos' ? data : data.filter((item) => item.category === category));
+      } catch { console.error('No se pudo cargar el catálogo desde la API.'); }
+      setLoading(false); return;
     }
     
     setLoading(false);
@@ -185,13 +115,6 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
            tips: d.exerciseTips || null,
         };
 
-        // Cache this specific full detail into Supabase for next time (Lazy update)
-        await supabase.from('exercises').update({
-           video_url: fullDetails.video_url,
-           instructions: fullDetails.instructions,
-           tips: fullDetails.tips
-        }).eq('id', ex.id);
-        
         // Update local state list to avoid querying again if closed and reopened
         setExercises(prev => prev.map(p => p.id === ex.id ? fullDetails : p));
       }
@@ -329,3 +252,5 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
 };
 
 export default ExerciseMarketplace;
+
+

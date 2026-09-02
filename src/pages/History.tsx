@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../api/supabase';
 import { motion } from 'framer-motion';
 import { Calendar, Dumbbell, Trash2, Edit2, Bookmark, Clock, Activity, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +7,7 @@ import { Helmet } from 'react-helmet-async';
 import { useNotification } from '../context/NotificationContext';
 import MediaModal from '../components/shared/MediaModal';
 import Analytics from './Analytics';
+import { backendDelete, backendGet } from '../api/backend';
 
 interface HistoryWorkout extends Workout {
 
@@ -30,20 +30,10 @@ const History = () => {
   useEffect(() => {
     const initFetch = async () => {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from('workouts')
-          .select(`
-            *,
-            workout_exercises (
-              exercise:exercises ( image_url )
-            )
-          `)
-          .eq('user_id', user.id)
-          .order('started_at', { ascending: false });
-        if (data) setWorkouts(data);
-      }
+      try {
+        const data = await backendGet<Array<{ id: string; name: string; description: string | null; isTemplate: boolean; startedAtUtc: string; completedAtUtc: string | null; exercises: Array<{ imageUrl: string | null }> }>>('/api/workouts');
+        setWorkouts(data.map((item) => ({ id: item.id, user_id: '', name: item.name, description: item.description, is_template: item.isTemplate, started_at: item.startedAtUtc, completed_at: item.completedAtUtc, workout_exercises: item.exercises.map((exercise) => ({ exercise: { image_url: exercise.imageUrl } })) })));
+      } catch { showToast('No se pudo cargar el historial', 'error'); }
       setLoading(false);
     };
 
@@ -55,17 +45,8 @@ const History = () => {
     const isConfirmed = await confirm('Are you sure you want to delete this? This action cannot be undone.');
     if (!isConfirmed) return;
 
-    const { error } = await supabase
-      .from('workouts')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      showToast('Error deleting workout', 'error');
-    } else {
-      setWorkouts(workouts.filter(w => w.id !== id));
-      showToast('Workout deleted successfully', 'success');
-    }
+    try { await backendDelete(`/api/workouts/${id}`); setWorkouts(workouts.filter(w => w.id !== id)); showToast('Entrenamiento eliminado', 'success'); }
+    catch { showToast('Error al eliminar el entrenamiento', 'error'); }
   };
 
   const handleEdit = (id: string) => {
@@ -89,7 +70,7 @@ const History = () => {
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Historial y Biblioteca</h2>
-          <h1 className="text-3xl font-black tracking-tight italic uppercase">Entrenamientos</h1>
+          <h1 className="page-title">Entrenamientos</h1>
         </div>
         <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 w-full sm:w-auto overflow-x-auto">
           <button 

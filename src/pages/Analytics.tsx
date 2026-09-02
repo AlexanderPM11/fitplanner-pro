@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../api/supabase';
 import { motion } from 'framer-motion';
 import { TrendingUp, Award, Activity, Clock, Dumbbell, Calendar, Zap } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
@@ -8,6 +7,7 @@ import {
   AreaChart, Area, BarChart, Bar, Cell, LineChart, Line
 } from 'recharts';
 import { format, startOfWeek } from 'date-fns';
+import { backendGet } from '../api/backend';
 
 interface ProgressData {
   date: string;
@@ -46,43 +46,19 @@ const Analytics: React.FC<AnalyticsProps> = ({ hideHeader = false }) => {
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
 
   useEffect(() => {
+    async function fetchAnalyticsData() {
+      setLoading(true);
+      try {
+        const apiData = await backendGet<Array<{ name: string; startedAtUtc: string; completedAtUtc: string | null; exercises: Array<{ exerciseName: string | null; category: string | null; sets: Array<{ weight: number | null; reps: number | null; completed: boolean }> }> }>>('/api/workouts?templates=false');
+        const data = apiData.filter((item) => item.completedAtUtc).map((item) => ({ name: item.name, started_at: item.startedAtUtc, completed_at: item.completedAtUtc, workout_exercises: item.exercises.map((exercise) => ({ exercise: { name: exercise.exerciseName, category: exercise.category }, sets: exercise.sets })) }));
+        processVolumeData(data);
+        processPRsAndExercises(data);
+        calculateStatsAndNewCharts(data);
+      } catch { /* Keep the analytics empty state when the API is unavailable. */ }
+      setLoading(false);
+    }
     fetchAnalyticsData();
   }, []);
-
-  const fetchAnalyticsData = async () => {
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // Fetch all completed workout data with joins
-    const { data, error } = await supabase
-      .from('workouts')
-      .select(`
-        id,
-        name,
-        started_at,
-        completed_at,
-        workout_exercises (
-          exercise:exercises ( name, category ),
-          sets ( weight, reps, completed )
-        )
-      `)
-      .eq('user_id', user.id)
-      .eq('is_template', false)
-      .not('completed_at', 'is', null)
-      .order('started_at', { ascending: true });
-
-    if (error || !data) {
-      console.error('Error fetching analytics:', error);
-      setLoading(false);
-      return;
-    }
-
-    processVolumeData(data);
-    processPRsAndExercises(data);
-    calculateStatsAndNewCharts(data);
-    setLoading(false);
-  };
 
   const calculateStatsAndNewCharts = (workouts: any[]) => {
     // 1. Stats
@@ -299,8 +275,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ hideHeader = false }) => {
 
   const handleExerciseChange = (ex: string) => {
     setSelectedExercise(ex);
-    // We need the data again or store it in state
-    fetchAnalyticsData(); // Re-fetch or optimize by storing raw data
   };
 
   if (loading) {

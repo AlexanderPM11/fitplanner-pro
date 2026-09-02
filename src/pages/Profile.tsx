@@ -1,30 +1,22 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../api/supabase';
 import { LogOut, User as UserIcon, Shield, Settings, Bell, CircleCheck, History, ChevronRight } from 'lucide-react';
 import type { Profile } from '../types';
 import { Helmet } from 'react-helmet-async';
+import { backendGet } from '../api/backend';
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     async function fetchProfile() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        if (data) setProfile(data);
-      }
+      try { const data = await backendGet<Profile>('/api/me'); setProfile(data); } catch { /* Keep the neutral profile state. */ }
     }
     fetchProfile();
   }, []);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('fitplanner_token'); window.location.reload();
   };
 
   return (
@@ -35,7 +27,7 @@ const ProfilePage = () => {
       </Helmet>
       <header>
         <h2 className="text-white/50 text-xs font-bold uppercase tracking-widest">Cuenta de Atleta</h2>
-        <h1 className="text-3xl font-black tracking-tight italic uppercase">Perfil</h1>
+        <h1 className="page-title">Perfil</h1>
       </header>
 
       {/* User Info Card */}
@@ -87,6 +79,17 @@ const ProfilePage = () => {
             </div>
             <ChevronRight size={16} className="text-white/20" />
           </Link>
+
+          {profile?.is_admin && <Link
+            to="/admin/users"
+            className="p-4 flex items-center justify-between border-b border-white/5 hover:bg-white/5 transition-colors"
+          >
+            <div className="flex items-center space-x-3">
+              <Shield size={18} className="text-primary" />
+              <span className="font-bold text-sm tracking-tight italic uppercase">Administrar usuarios</span>
+            </div>
+            <ChevronRight size={16} className="text-white/20" />
+          </Link>}
 
           <button 
             onClick={handleSignOut}

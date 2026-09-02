@@ -16,10 +16,8 @@ dist/
 dist-ssr/
 out/
 build/
-
-# Supabase
-.supabase/
-supabase/.temp/
+**/bin/
+**/obj/
 
 # Environment variables
 .env
@@ -29,6 +27,9 @@ supabase/.temp/
 .env.production.local
 .env.*
 !.env.example
+
+# Local deployment secrets
+.env.dokploy
 
 
 # IDEs / Editors
@@ -45,4 +46,3 @@ supabase/.temp/
 *.swo
 .DS_Store
 Thumbs.db
-

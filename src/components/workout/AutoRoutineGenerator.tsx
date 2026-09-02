@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { supabase } from '../../api/supabase';
 import { Sparkles, X, Loader2, Dumbbell, User } from 'lucide-react';
 import type { Exercise } from '../../types';
 import { useNotification } from '../../context/NotificationContext';
 import { motion } from 'framer-motion';
+import { backendGet } from '../../api/backend';
 
 interface AutoRoutineGeneratorProps {
   onGenerated: (exercises: Exercise[]) => void;
@@ -32,139 +32,20 @@ const AutoRoutineGenerator: React.FC<AutoRoutineGeneratorProps> = ({ onGenerated
     setSelectedMuscle(muscle.id);
     setLoading(true);
 
-    const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
-    if (!apiKey) {
-      showToast('Falta configurar VITE_RAPIDAPI_KEY', 'error');
-      setLoading(false);
-      return;
+    {
+      try {
+        const available = await backendGet<Exercise[]>('/api/exercises');
+        const normalized = muscle.name.toLowerCase();
+        const matches = available.filter((exercise) => muscle.id === 'Full Body' || exercise.category.toLowerCase().includes(normalized)).slice(0, muscle.id === 'Full Body' ? 6 : 4);
+        if (matches.length === 0) throw new Error('No hay ejercicios disponibles para ese grupo.');
+        onGenerated(matches); showToast(`Rutina de ${muscle.name} generada con éxito`, 'success'); onClose();
+      } catch (error) { showToast(error instanceof Error ? error.message : 'No se pudieron cargar ejercicios', 'error'); }
+      setLoading(false); return;
     }
 
-    try {
-      let apiExercises: any[] = [];
-
-      if (muscle.id === 'Full Body') {
-        // Special logic for Full Body: Fetch from multiple key categories
-        const categories = [
-          { q: 'legs', count: 2 },
-          { q: 'back', count: 2 },
-          { q: 'chest', count: 2 },
-          { q: 'glute', count: 1 },
-          { q: 'shoulders', count: 1 },
-          { q: 'arms', count: 1 },
-          { q: 'abs', count: 1 }
-        ];
-
-        const results = await Promise.all(
-          categories.map(cat => 
-            fetch(`https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises/search?search=${encodeURIComponent(cat.q)}`, {
-              method: 'GET',
-              headers: {
-                'x-rapidapi-key': apiKey,
-                'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com'
-              }
-            }).then(r => r.json())
-          )
-        );
-
-        results.forEach((res, idx) => {
-          if (res.success && Array.isArray(res.data)) {
-            apiExercises.push(...res.data.slice(0, categories[idx].count));
-          }
-        });
-      } else {
-        // Single category fetch
-        const response = await fetch(`https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises/search?search=${encodeURIComponent(muscle.query)}`, {
-          method: 'GET',
-          headers: {
-            'x-rapidapi-key': apiKey,
-            'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com'
-          }
-        });
-        const res = await response.json();
-        
-        if (res.success && Array.isArray(res.data)) {
-          apiExercises = res.data.slice(0, 10);
-        }
-      }
-
-      if (apiExercises.length === 0) {
-        throw new Error('No se pudieron obtener ejercicios');
-      }
-
-      // SECONDARY FETCH: Get full details for each exercise to get videoUrl
-      const enrichedExercises = await Promise.all(
-        apiExercises.map(async (ex) => {
-          try {
-            const detailResponse = await fetch(`https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises/${ex.exerciseId}`, {
-              method: 'GET',
-              headers: {
-                'x-rapidapi-key': apiKey,
-                'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com'
-              }
-            });
-            const detailRes = await detailResponse.json();
-            return detailRes.success ? detailRes.data : ex;
-          } catch (e) {
-            console.error('Error fetching details for', ex.exerciseId, e);
-            return ex;
-          }
-        })
-      );
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuario no autenticado');
-
-      const finalExercises: Exercise[] = [];
-
-      for (const apiEx of enrichedExercises) {
-        const displayName = apiEx.name.charAt(0).toUpperCase() + apiEx.name.slice(1);
-
-        // Standardize data object for both insert and update
-        const exerciseData = {
-          name: displayName,
-          category: apiEx.bodyPart || muscle.id,
-          user_id: user.id,
-          image_url: apiEx.imageUrl,
-          video_url: apiEx.videoUrl || null,
-          description: apiEx.overview || null,
-          instructions: apiEx.instructions || null,
-          tips: apiEx.exerciseTips || null,
-          difficulty: apiEx.difficultyLevel || null,
-          male_activation_url: apiEx.maleMuscleActivationUrl || null,
-          female_activation_url: apiEx.femaleMuscleActivationUrl || null,
-          gender: gender
-        };
-
-        // UPSERT: Create if doesn't exist, update if it does (matching by name and user_id)
-        const { data: syncedEx, error: syncError } = await supabase
-          .from('exercises')
-          .upsert(exerciseData, { 
-            onConflict: 'name,user_id',
-            ignoreDuplicates: false // We WANT to overwrite with new API data
-          })
-          .select()
-          .single();
-
-        if (!syncError && syncedEx) {
-          finalExercises.push(syncedEx);
-        } else {
-          console.error('Error syncing exercise:', syncError);
-        }
-      }
-
-      if (finalExercises.length > 0) {
-        showToast(`¡Rutina de ${muscle.name} generada con éxito!`, 'success');
-        onGenerated(finalExercises);
-      } else {
-        showToast('No se pudieron procesar los ejercicios', 'error');
-      }
-    } catch (error) {
-      console.error(error);
-      showToast('Error al auto-generar la rutina', 'error');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
   };
+
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
@@ -252,3 +133,7 @@ const AutoRoutineGenerator: React.FC<AutoRoutineGeneratorProps> = ({ onGenerated
 };
 
 export default AutoRoutineGenerator;
+
+
+
+

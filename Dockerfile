@@ -3,21 +3,18 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Accept build arguments for Supabase
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_ANON_KEY
 ARG VITE_RAPIDAPI_KEY
+ARG VITE_API_URL=/api
 
 # Set them as environment variables for the build process
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
-ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 ENV VITE_RAPIDAPI_KEY=$VITE_RAPIDAPI_KEY
+ENV VITE_API_URL=$VITE_API_URL
 
 # Copy package files
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install --legacy-peer-deps
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
