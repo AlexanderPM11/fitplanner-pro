@@ -70,7 +70,20 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
     setLoading(false);
   };
 
-  const handleExerciseClick = (ex: Exercise) => setSelectedExercise(ex);
+  const handleExerciseClick = async (ex: Exercise) => {
+    setSelectedExercise(ex);
+    try {
+      const details = await backendGet<Exercise & { imageUrl?: string | null; videoUrl?: string | null }>(`/api/exercises/${ex.id}`);
+      setSelectedExercise({
+        ...ex,
+        ...details,
+        image_url: details.image_url ?? details.imageUrl ?? ex.image_url,
+        video_url: details.video_url ?? details.videoUrl ?? ex.video_url,
+      });
+    } catch {
+      console.error('No se pudo cargar la animación del ejercicio.');
+    }
+  };
 
   if (!isOpen) return null;
 

@@ -11,6 +11,8 @@ public sealed class Exercise
     public string? VideoUrl { get; set; }
     public string? Equipment { get; set; }
     public string? MovementType { get; set; }
+    public string? ExternalId { get; set; }
+    public string Source { get; set; } = "local";
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 

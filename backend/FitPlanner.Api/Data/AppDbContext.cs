@@ -21,6 +21,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         builder.Entity<Exercise>().ToTable("exercises").HasKey(item => item.Id);
         builder.Entity<Exercise>().Property(item => item.Name).HasMaxLength(160).IsRequired();
         builder.Entity<Exercise>().Property(item => item.Category).HasMaxLength(80).IsRequired();
+        builder.Entity<Exercise>().Property(item => item.ExternalId).HasMaxLength(120);
+        builder.Entity<Exercise>().Property(item => item.Source).HasMaxLength(40).IsRequired();
+        builder.Entity<Exercise>().HasIndex(item => new { item.Source, item.ExternalId }).IsUnique();
         builder.Entity<Exercise>().HasData(
             new Exercise { Id = Guid.Parse("2f3c6b1a-7f3e-4e9f-9b24-000000000001"), Name = "Press de banca", Category = "Pecho", Description = "Empuje horizontal para desarrollar el pectoral.", CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new Exercise { Id = Guid.Parse("2f3c6b1a-7f3e-4e9f-9b24-000000000002"), Name = "Sentadilla", Category = "Piernas", Description = "Movimiento base para fuerza de piernas.", CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },

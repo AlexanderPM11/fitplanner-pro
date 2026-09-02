@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FitPlanner.Api.Data;
 using FitPlanner.Api.Models;
+using FitPlanner.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -8,10 +9,38 @@ using Microsoft.EntityFrameworkCore;
 namespace FitPlanner.Api.Controllers;
 
 [ApiController, Authorize, Route("api")]
-public sealed class FitnessController(AppDbContext db) : ControllerBase
+public sealed class FitnessController(AppDbContext db, RapidApiCatalogService rapidApi) : ControllerBase
 {
     [HttpGet("exercises")]
-    public async Task<IReadOnlyList<ExerciseResponse>> Exercises(CancellationToken cancellationToken) => await db.Exercises.AsNoTracking().OrderBy(item => item.Category).ThenBy(item => item.Name).Select(item => new ExerciseResponse(item.Id, item.Name, item.Category, item.Description, item.ImageUrl, item.VideoUrl, item.Equipment, item.MovementType)).ToListAsync(cancellationToken);
+    public async Task<IReadOnlyList<ExerciseResponse>> Exercises(CancellationToken cancellationToken)
+    {
+        var query = db.Exercises.AsNoTracking().Where(item => item.Source == "rapidapi");
+        return await query.OrderBy(item => item.Category).ThenBy(item => item.Name)
+            .Select(item => new ExerciseResponse(item.Id, item.Name, item.Category, item.Description, item.ImageUrl, item.VideoUrl, item.Equipment, item.MovementType, item.ExternalId, item.Source))
+            .ToListAsync(cancellationToken);
+    }
+
+    [HttpGet("exercises/{id:guid}")]
+    public async Task<IActionResult> ExerciseDetails(Guid id, CancellationToken cancellationToken)
+    {
+        var exercise = await db.Exercises.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (exercise is null) return NotFound();
+
+        if (exercise.Source == "rapidapi" && !string.IsNullOrWhiteSpace(exercise.ExternalId))
+        {
+            var details = await rapidApi.GetDetailsAsync(exercise.ExternalId, cancellationToken);
+            if (details is not null)
+            {
+                exercise.ImageUrl = details.ImageUrl ?? exercise.ImageUrl;
+                exercise.VideoUrl = details.GifUrl ?? details.VideoUrl ?? exercise.VideoUrl;
+                exercise.Description = details.Description ?? exercise.Description;
+                await db.SaveChangesAsync(cancellationToken);
+                return Ok(new ExerciseDetailsResponse(exercise.Id, details.Name, details.Category, details.Description, details.ImageUrl ?? exercise.ImageUrl, details.GifUrl ?? details.VideoUrl ?? exercise.VideoUrl, details.Equipment, details.MovementType, details.Instructions, exercise.ExternalId, exercise.Source));
+            }
+        }
+
+        return Ok(new ExerciseDetailsResponse(exercise.Id, exercise.Name, exercise.Category, exercise.Description, exercise.ImageUrl, exercise.VideoUrl, exercise.Equipment, exercise.MovementType, [], exercise.ExternalId, exercise.Source));
+    }
 
     [HttpGet("routines")]
     public async Task<IReadOnlyList<RoutineResponse>> Routines(CancellationToken cancellationToken)
@@ -49,6 +78,7 @@ public sealed class FitnessController(AppDbContext db) : ControllerBase
     private Guid UserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub")!);
 }
 
-public record ExerciseResponse(Guid Id, string Name, string Category, string? Description, string? ImageUrl, string? VideoUrl, string? Equipment, string? MovementType);
+public record ExerciseResponse(Guid Id, string Name, string Category, string? Description, string? ImageUrl, string? VideoUrl, string? Equipment, string? MovementType, string? ExternalId, string Source);
+public record ExerciseDetailsResponse(Guid Id, string Name, string Category, string? Description, string? ImageUrl, string? VideoUrl, string? Equipment, string? MovementType, List<string> Instructions, string? ExternalId, string Source);
 public record RoutineResponse(Guid Id, string Name, string? Description, int ExerciseCount);
 public record CreateRoutineRequest(string Name, string? Description, List<Guid> ExerciseIds);

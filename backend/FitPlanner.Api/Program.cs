@@ -16,6 +16,9 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+builder.Services.Configure<RapidApiOptions>(builder.Configuration.GetSection("RapidApi"));
+builder.Services.AddHttpClient("rapidapi", client => client.BaseAddress = new Uri("https://edb-with-gifs-and-images-by-ascendapi.p.rapidapi.com/"));
+builder.Services.AddScoped<RapidApiCatalogService>();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
 {
@@ -64,7 +67,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 await ApplyMigrationsAsync(app.Services);
-await ExerciseCatalogSeeder.SeedAsync(app.Services, app.Environment);
+await SyncRapidApiAsync(app.Services);
 await SeedAdministratorAsync(app.Services, app.Configuration);
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
@@ -122,4 +125,10 @@ static async Task SeedAdministratorAsync(IServiceProvider services, IConfigurati
         var roleResult = await userManager.AddToRoleAsync(admin, "Admin");
         if (!roleResult.Succeeded) throw new InvalidOperationException(string.Join(" ", roleResult.Errors.Select(error => error.Description)));
     }
+}
+
+static async Task SyncRapidApiAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<RapidApiCatalogService>().SyncAsync();
 }
