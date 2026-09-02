@@ -43,11 +43,7 @@ Copia el archivo `.env.example` y renómbralo a `.env`:
 cp .env.example .env
 ```
 
-Llena las variables de entorno con tu clave de RapidAPI:
-
-```env
-VITE_RAPIDAPI_KEY=tu_rapidapi_key
-```
+El catálogo de ejercicios funciona con datos y recursos estáticos incluidos en el proyecto; no requiere una clave externa.
 
 ### 3. Instalar Dependencias
 
@@ -74,6 +70,10 @@ dotnet run --project backend/FitPlanner.Api
 ```
 
 Incluye `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/forgot-password` y `POST /api/auth/reset-password`. El frontend usa exclusivamente esta API.
+
+### Catálogo multimedia local
+
+El catálogo se importa desde `backend/FitPlanner.Api/Data/exercise-catalog.json` al iniciar la API. Las miniaturas y GIFs se sirven desde `public/exercise-media/images` y `public/exercise-media/gifs`; MySQL guarda únicamente rutas relativas como `/exercise-media/gifs/0001-2gPfomN.gif`, nunca imágenes en Base64. El catálogo multimedia está basado en `exercises-dataset`; sus condiciones y atribución se conservan en `public/exercise-media/LICENSE-GIF-DATASET.md` y `public/exercise-media/NOTICE-GIF-DATASET.md`.
 
 Al iniciar, la API aplica las migraciones y crea de forma idempotente el usuario administrador definido por `ADMIN_EMAIL` y `ADMIN_PASSWORD`. El administrador puede consultar `GET /api/admin/users` desde la pantalla **Administrar usuarios** de la PWA. El resto de usuarios no tiene acceso a ese endpoint.
 

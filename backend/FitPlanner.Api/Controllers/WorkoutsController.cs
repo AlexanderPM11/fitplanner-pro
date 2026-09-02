@@ -13,16 +13,28 @@ public sealed class WorkoutsController(AppDbContext db) : ControllerBase
     [HttpGet]
     public async Task<IReadOnlyList<WorkoutResponse>> List([FromQuery] bool? templates, CancellationToken cancellationToken)
     {
-        var query = db.Workouts.AsNoTracking().Where(item => item.UserId == UserId());
+        var query = db.Workouts.AsNoTracking()
+            .Include(item => item.Exercises)
+                .ThenInclude(item => item.Exercise)
+            .Include(item => item.Exercises)
+                .ThenInclude(item => item.Sets)
+            .Where(item => item.UserId == UserId());
         if (templates.HasValue) query = query.Where(item => item.IsTemplate == templates.Value);
-        return await query.OrderByDescending(item => item.StartedAtUtc).Select(ToResponse()).ToListAsync(cancellationToken);
+        var workouts = await query.OrderByDescending(item => item.StartedAtUtc).ToListAsync(cancellationToken);
+        return workouts.Select(Map).ToList();
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken)
     {
-        var workout = await db.Workouts.AsNoTracking().Where(item => item.Id == id && item.UserId == UserId()).Select(ToResponse()).SingleOrDefaultAsync(cancellationToken);
-        return workout is null ? NotFound() : Ok(workout);
+        var workout = await db.Workouts.AsNoTracking()
+            .Include(item => item.Exercises)
+                .ThenInclude(item => item.Exercise)
+            .Include(item => item.Exercises)
+                .ThenInclude(item => item.Sets)
+            .SingleOrDefaultAsync(item => item.Id == id && item.UserId == UserId(), cancellationToken);
+
+        return workout is null ? NotFound() : Ok(Map(workout));
     }
 
     [HttpPost]
@@ -53,7 +65,26 @@ public sealed class WorkoutsController(AppDbContext db) : ControllerBase
     }
 
     private Guid UserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub")!);
-    private static System.Linq.Expressions.Expression<Func<Workout, WorkoutResponse>> ToResponse() => item => new WorkoutResponse(item.Id, item.Name, item.Description, item.IsTemplate, item.StartedAtUtc, item.CompletedAtUtc, item.Exercises.OrderBy(exercise => exercise.OrderIndex).Select(exercise => new WorkoutExerciseResponse(exercise.Id, exercise.ExerciseId, exercise.OrderIndex, exercise.Exercise.Name, exercise.Exercise.Category, exercise.Exercise.ImageUrl, exercise.Exercise.VideoUrl, exercise.Sets.OrderBy(set => set.OrderIndex).Select(set => new SetResponse(set.Id, set.Weight, set.Reps, set.Completed, set.OrderIndex)).ToList())).ToList());
+    private static WorkoutResponse Map(Workout item) => new(
+        item.Id,
+        item.Name,
+        item.Description,
+        item.IsTemplate,
+        item.StartedAtUtc,
+        item.CompletedAtUtc,
+        item.Exercises.OrderBy(exercise => exercise.OrderIndex)
+            .Select(exercise => new WorkoutExerciseResponse(
+                exercise.Id,
+                exercise.ExerciseId,
+                exercise.OrderIndex,
+                exercise.Exercise.Name,
+                exercise.Exercise.Category,
+                exercise.Exercise.ImageUrl,
+                exercise.Exercise.VideoUrl,
+                exercise.Sets.OrderBy(set => set.OrderIndex)
+                    .Select(set => new SetResponse(set.Id, set.Weight, set.Reps, set.Completed, set.OrderIndex))
+                    .ToList()))
+            .ToList());
 }
 
 public record WorkoutResponse(Guid Id, string Name, string? Description, bool IsTemplate, DateTime StartedAtUtc, DateTime? CompletedAtUtc, List<WorkoutExerciseResponse> Exercises);

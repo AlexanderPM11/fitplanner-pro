@@ -32,43 +32,20 @@ interface ExerciseMarketplaceProps {
   mode?: 'add' | 'replace';
 }
 
+const isVideoAsset = (url?: string | null) => Boolean(url && /\.(mp4|webm|mov)(?:\?|$)/i.test(url));
+
 const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClose, onSelect, mode = 'add' }) => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>(['Todos']);
   const [activeCategory, setActiveCategory] = useState('Todos');
-  const [fetchingDetailsId, setFetchingDetailsId] = useState<string | null>(null);
   
   // Details Sheet
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      fetchCategories();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
     if (isOpen) fetchExercisesCategory(activeCategory);
   }, [isOpen, activeCategory]);
-
-  const fetchCategories = async () => {
-    const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
-    try {
-      const resp = await fetch('https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/bodyparts', {
-        headers: { 'x-rapidapi-key': apiKey, 'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com' }
-      });
-      const data = await resp.json();
-      if (data.data) {
-        const apiCats = data.data.map((c: any) => c.name);
-        setCategories(['Todos', ...apiCats]);
-      }
-    } catch (e) {
-      console.error('Error fetching categories', e);
-      // Fallback a categorías básicas si falla el API
-      setCategories(['Todos', 'CHEST', 'BACK', 'SHOULDERS', 'UPPER ARMS', 'WAIST', 'QUADRICEPS']);
-    }
-  };
 
   const fetchExercisesCategory = async (category: string) => {
     setLoading(true);
@@ -76,10 +53,16 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
 
     {
       try {
-        const data = await backendGet<Exercise[]>('/api/exercises');
-        const apiCategories = Array.from(new Set(data.map((item) => item.category))).sort();
+        const data = await backendGet<Array<Exercise & { imageUrl?: string | null; videoUrl?: string | null; apiId?: string }>>('/api/exercises');
+        const normalized = data.map((item) => ({
+          ...item,
+          image_url: item.image_url ?? item.imageUrl ?? null,
+          video_url: item.video_url ?? item.videoUrl ?? null,
+          api_id: item.api_id ?? item.apiId,
+        }));
+        const apiCategories = Array.from(new Set(normalized.map((item) => item.category))).sort();
         setCategories(['Todos', ...apiCategories]);
-        setExercises(category === 'Todos' ? data : data.filter((item) => item.category === category));
+        setExercises(category === 'Todos' ? normalized : normalized.filter((item) => item.category === category));
       } catch { console.error('No se pudo cargar el catálogo desde la API.'); }
       setLoading(false); return;
     }
@@ -87,44 +70,7 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
     setLoading(false);
   };
 
-  const handleExerciseClick = async (ex: Exercise) => {
-    if (fetchingDetailsId) return;
-    
-    // Si ya tiene el video_url cacheado en la base de datos, lo abrimos inmediatamente (Cero demoras)
-    if (ex.video_url || !ex.api_id) {
-       setSelectedExercise(ex);
-       return;
-    }
-
-    setFetchingDetailsId(ex.id);
-    
-    // Fetch full detail to get video and instructions lazily
-    const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
-    let fullDetails = { ...ex };
-    try {
-      const resp = await fetch(`https://edb-with-videos-and-images-by-ascendapi.p.rapidapi.com/api/v1/exercises/${ex.api_id}`, {
-        headers: { 'x-rapidapi-key': apiKey, 'x-rapidapi-host': 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com' }
-      });
-      const data = await resp.json();
-      if (data.data) {
-        const d = data.data;
-        fullDetails = {
-           ...ex,
-           video_url: d.videoUrl || null,
-           instructions: d.instructions || null,
-           tips: d.exerciseTips || null,
-        };
-
-        // Update local state list to avoid querying again if closed and reopened
-        setExercises(prev => prev.map(p => p.id === ex.id ? fullDetails : p));
-      }
-    } catch(e) {
-       console.error(e);
-    } finally {
-      setFetchingDetailsId(null);
-      setSelectedExercise(fullDetails);
-    }
-  };
+  const handleExerciseClick = (ex: Exercise) => setSelectedExercise(ex);
 
   if (!isOpen) return null;
 
@@ -188,17 +134,15 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
               <div 
                 key={ex.id} 
                 onClick={() => handleExerciseClick(ex)}
-                className={`group relative flex items-center gap-4 p-3 bg-white/[0.02] border border-white/5 rounded-2xl transition-all overflow-hidden ${fetchingDetailsId === ex.id ? 'opacity-50 cursor-wait' : 'hover:bg-white/[0.05] hover:border-white/10 cursor-pointer'}`}
+                className="group relative flex items-center gap-4 p-3 bg-white/[0.02] border border-white/5 rounded-2xl transition-all overflow-hidden hover:bg-white/[0.05] hover:border-white/10 cursor-pointer"
               >
                 {/* Media Thumbnail */}
                 <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-black/50 border border-white/5 relative flex items-center justify-center">
-                  {fetchingDetailsId === ex.id ? (
-                     <Loader2 className="animate-spin text-primary w-5 h-5" />
-                  ) : ex.image_url ? (
-                    ex.image_url.includes('.mp4') ? (
-                      <video src={ex.image_url} autoPlay loop muted playsInline className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" />
+                  {(ex.video_url || ex.image_url) ? (
+                    isVideoAsset(ex.video_url) ? (
+                      <video src={ex.video_url!} autoPlay loop muted playsInline className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" />
                     ) : (
-                      <img src={ex.image_url} alt={ex.name} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" />
+                      <img src={(ex.video_url || ex.image_url)!} alt={ex.name} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" />
                     )
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-white/10">
@@ -252,5 +196,3 @@ const ExerciseMarketplace: React.FC<ExerciseMarketplaceProps> = ({ isOpen, onClo
 };
 
 export default ExerciseMarketplace;
-
-

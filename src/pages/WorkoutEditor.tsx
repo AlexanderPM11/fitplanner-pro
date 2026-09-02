@@ -21,6 +21,8 @@ interface WorkoutExerciseState {
   }[];
 }
 
+const isVideoAsset = (url?: string | null) => Boolean(url && /\.(mp4|webm|mov)(?:\?|$)/i.test(url));
+
 const WorkoutEditor = () => {
   const navigate = useNavigate();
   const [name, setName] = useState('Nuevo Entrenamiento');
@@ -443,12 +445,12 @@ const WorkoutEditor = () => {
 
                         {ex.exercise.video_url || ex.exercise.image_url ? (
                           <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0 bg-black/40 border border-white/10 relative group/media shadow-md">
-                            {ex.exercise.video_url ? (
-                              <video src={ex.exercise.video_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
-                            ) : ex.exercise.image_url?.includes('.mp4') || ex.exercise.image_url?.includes('.webm') ? (
-                              <video src={ex.exercise.image_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                            {isVideoAsset(ex.exercise.video_url) ? (
+                              <video src={ex.exercise.video_url!} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                            ) : isVideoAsset(ex.exercise.image_url) ? (
+                              <video src={ex.exercise.image_url!} autoPlay loop muted playsInline className="w-full h-full object-cover" />
                             ) : (
-                              <img src={ex.exercise.image_url!} alt={ex.exercise.name} className="w-full h-full object-cover group-hover/media:scale-110 transition-transform duration-300" />
+                              <img src={(ex.exercise.video_url || ex.exercise.image_url)!} alt={ex.exercise.name} className="w-full h-full object-cover group-hover/media:scale-110 transition-transform duration-300" />
                             )}
                           </div>
                         ) : (
@@ -515,9 +517,9 @@ const WorkoutEditor = () => {
                                 }}
                               >
                                 {/* Video detection */}
-                                {ex.exercise.video_url ? (
+                                {isVideoAsset(ex.exercise.video_url) ? (
                                   <video 
-                                    src={ex.exercise.video_url} 
+                                    src={ex.exercise.video_url!} 
                                     autoPlay 
                                     loop 
                                     muted 
@@ -525,10 +527,7 @@ const WorkoutEditor = () => {
                                     controls
                                     className="relative z-10 w-full h-full object-cover"
                                   />
-                                ) : (ex.exercise.image_url?.includes('.mp4') || 
-                                  ex.exercise.image_url?.includes('.webm') || 
-                                  ex.exercise.image_url?.includes('video') ||
-                                  ex.exercise.image_url?.includes('giphy')) ? (
+                                ) : isVideoAsset(ex.exercise.image_url) ? (
                                   <video 
                                     src={ex.exercise.image_url} 
                                     autoPlay 
@@ -540,7 +539,7 @@ const WorkoutEditor = () => {
                                   />
                                 ) : (
                                   <img 
-                                    src={ex.exercise.image_url || ''} 
+                                    src={(ex.exercise.video_url || ex.exercise.image_url) || ''} 
                                     alt={ex.exercise.name} 
                                     className="relative z-10 w-full h-full object-cover" 
                                   />
@@ -741,5 +740,3 @@ const WorkoutEditor = () => {
 };
 
 export default WorkoutEditor;
-
-

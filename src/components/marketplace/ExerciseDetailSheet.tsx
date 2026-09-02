@@ -13,6 +13,8 @@ interface ExerciseDetailSheetProps {
   mode: 'add' | 'replace';
 }
 
+const isVideoAsset = (url?: string | null) => Boolean(url && /\.(mp4|webm|mov)(?:\?|$)/i.test(url));
+
 const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({ exercise, isOpen, onClose, onAction, mode }) => {
   const { showToast } = useNotification();
   const [isPlaying, setIsPlaying] = useState(true);
@@ -57,9 +59,9 @@ const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({ exercise, isO
             <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 relative">
               {/* Media Section */}
               <div className="relative w-full aspect-[4/3] bg-[#050505]">
-                {exercise.video_url || (exercise.image_url && exercise.image_url.includes('.mp4')) ? (
+                {isVideoAsset(exercise.video_url) || isVideoAsset(exercise.image_url) ? (
                    <video 
-                     src={exercise.video_url || exercise.image_url!} 
+                     src={(isVideoAsset(exercise.video_url) ? exercise.video_url : exercise.image_url)!} 
                      autoPlay={isPlaying} 
                      loop 
                      muted 
@@ -68,7 +70,7 @@ const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({ exercise, isO
                      onClick={() => setIsPlaying(!isPlaying)}
                    />
                 ) : (
-                  <img src={exercise.image_url || ''} alt={exercise.name} className="w-full h-full object-cover opacity-80" />
+                  <img src={(exercise.video_url || exercise.image_url) || ''} alt={exercise.name} className="w-full h-full object-cover opacity-80" />
                 )}
                 
                 {/* Visual Overlays */}

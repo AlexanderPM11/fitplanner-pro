@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("ConnectionStrings:Default is required.");
@@ -62,6 +64,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 await ApplyMigrationsAsync(app.Services);
+await ExerciseCatalogSeeder.SeedAsync(app.Services, app.Environment);
 await SeedAdministratorAsync(app.Services, app.Configuration);
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
